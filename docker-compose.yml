@@ -1,0 +1,50 @@
+services:
+  postgres_vendita:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: team
+      POSTGRES_PASSWORD: team
+      POSTGRES_DB: tickets
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_vendita:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/seed_companies.sql:/docker-entrypoint-initdb.d/02-companies.sql:ro
+      - ./sql/seed_employees_vendita.sql:/docker-entrypoint-initdb.d/03-employees.sql:ro
+      - ./sql/seed_vendita.sql:/docker-entrypoint-initdb.d/04-sector.sql:ro
+
+  postgres_acquisto:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: team
+      POSTGRES_PASSWORD: team
+      POSTGRES_DB: tickets
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg_acquisto:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/seed_companies.sql:/docker-entrypoint-initdb.d/02-companies.sql:ro
+      - ./sql/seed_employees_acquisto.sql:/docker-entrypoint-initdb.d/03-employees.sql:ro
+      - ./sql/seed_acquisto.sql:/docker-entrypoint-initdb.d/04-sector.sql:ro
+
+  postgres_manutenzione:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: team
+      POSTGRES_PASSWORD: team
+      POSTGRES_DB: tickets
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg_manutenzione:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/seed_companies.sql:/docker-entrypoint-initdb.d/02-companies.sql:ro
+      - ./sql/seed_employees_manutenzione.sql:/docker-entrypoint-initdb.d/03-employees.sql:ro
+      - ./sql/seed_manutenzione.sql:/docker-entrypoint-initdb.d/04-sector.sql:ro
+
+volumes:
+  pg_vendita:
+  pg_acquisto:
+  pg_manutenzione:

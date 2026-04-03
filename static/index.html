@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Assistenza — intake + dipendente</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --bg-elevated: #111820;
+      --surface: #161d28;
+      --surface-hover: #1c2532;
+      --border: #2a3545;
+      --border-strong: #3d4d63;
+      --text: #e9eef5;
+      --text-secondary: #9aaaba;
+      --muted: #7a8b9e;
+      --accent: #3b8bff;
+      --accent-hover: #5a9eff;
+      --accent-muted: rgba(59, 139, 255, 0.14);
+      --user-msg: #182636;
+      --bot-msg: #241f38;
+      --ok: #3dcf6e;
+      --ok-bg: rgba(61, 207, 110, 0.12);
+      --err: #ff7b7b;
+      --err-bg: rgba(255, 123, 123, 0.1);
+      --warn: #e8b84a;
+      --radius: 10px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
+      display: flex; flex-direction: column; font-family: var(--font);
+      font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+    }
+    header {
+      padding: 0.75rem 1.25rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 1rem 1.5rem; flex-wrap: wrap;
+      background: linear-gradient(165deg, var(--bg-elevated) 0%, var(--bg) 55%);
+    }
+    .brand { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    header h1 {
+      margin: 0; font-size: 1.2rem; font-weight: 650; letter-spacing: -0.03em; line-height: 1.25;
+    }
+    .brand-tag {
+      font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+    .tabs {
+      display: inline-flex; padding: 3px; gap: 2px; border-radius: 12px;
+      background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border);
+    }
+    .tabs button {
+      padding: 0.5rem 1rem; border: none; border-radius: 9px;
+      background: transparent; color: var(--text-secondary); cursor: pointer;
+      font-size: 0.82rem; font-weight: 550; font-family: inherit;
+      transition: background 0.18s, color 0.18s;
+    }
+    .tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+    .tabs button:focus-visible { outline: none; box-shadow: var(--focus); }
+    .tabs button.active {
+      background: var(--accent); color: #fff; font-weight: 600;
+      box-shadow: 0 1px 8px rgba(59, 139, 255, 0.35);
+    }
+    .header-meta {
+      flex: 1; min-width: 200px; max-width: 36rem;
+    }
+    .hint { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45; margin: 0; }
+
+    .panel-row { display: flex; gap: 0.65rem 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .field {
+      display: flex; flex-direction: column; gap: 0.28rem; min-width: 0;
+    }
+    .field label {
+      font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    input, select, textarea {
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0.48rem 0.7rem; font-size: 0.88rem; font-family: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    input:hover, select:hover, textarea:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+    input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted);
+    }
+    input.field-sm, select.field-sm { width: min(100%, 280px); min-width: 160px; }
+    select.field-sm { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239aaaba' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.65rem center; padding-right: 2rem; }
+
+    main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .view {
+      display: none; flex: 1; min-height: 0;
+      grid-template-columns: minmax(0, 1fr) minmax(272px, 340px); gap: 0;
+    }
+    .view.active { display: grid; }
+    @media (max-width: 1100px) {
+      .view.active { grid-template-columns: 1fr; }
+      .panel-side { border-top: 1px solid var(--border); max-height: 48vh; }
+    }
+
+    .panel {
+      display: flex; flex-direction: column; min-height: 0;
+      border-right: 1px solid var(--border); background: var(--bg);
+    }
+    .panel-side {
+      background: var(--bg-elevated);
+      overflow: hidden;
+    }
+    .panel:last-child { border-right: none; }
+    .panel h2 {
+      margin: 0; padding: 0.6rem 1.15rem; font-size: 0.68rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.2); font-weight: 650;
+    }
+
+    .scroll { flex: 1; overflow: auto; padding: 1rem 1.15rem; }
+    .scroll-muted { background: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, transparent 120px); }
+
+    .chat-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+    .chat-scroll {
+      flex: 1; overflow: auto; padding: 1rem 1.15rem;
+      display: flex; flex-direction: column; gap: 0.9rem; align-items: stretch;
+      max-width: 38rem; margin: 0 auto; width: 100%;
+    }
+    .chat-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 2rem 1.25rem; min-height: 200px; color: var(--text-secondary);
+      transition: opacity 0.2s;
+    }
+    .chat-empty.hidden { display: none; }
+    .chat-empty-icon {
+      width: 48px; height: 48px; border-radius: 14px; background: var(--accent-muted);
+      color: var(--accent); display: flex; align-items: center; justify-content: center;
+      font-size: 1.35rem; margin-bottom: 0.75rem;
+    }
+    .chat-empty p { margin: 0; font-size: 0.93rem; font-weight: 550; color: var(--text); }
+    .chat-empty .chat-empty-hint { margin-top: 0.35rem; font-size: 0.82rem; font-weight: 400; color: var(--muted); max-width: 22rem; }
+
+    .msg {
+      padding: 0.78rem 1.05rem; border-radius: 14px; font-size: 0.9rem;
+      line-height: 1.55; max-width: min(31rem, 100%);
+      box-shadow: var(--shadow); animation: msg-in 0.22s ease-out;
+    }
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .msg.user {
+      background: var(--user-msg); border: 1px solid rgba(59, 139, 255, 0.18); align-self: flex-start; margin-right: auto;
+      border-bottom-left-radius: 5px;
+    }
+    .msg.bot {
+      background: var(--bot-msg); border: 1px solid rgba(180, 140, 255, 0.18); align-self: flex-end; margin-left: auto;
+      border-bottom-right-radius: 5px;
+    }
+    .msg .role {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--muted); margin-bottom: 0.38rem;
+    }
+    .msg.user .role { color: #8ebfff; }
+    .msg.bot .role { color: #c9a8ff; }
+
+    .status-strip {
+      padding: 0.65rem 1.15rem 0.7rem; font-size: 0.86rem; line-height: 1.45;
+      background: var(--surface); border-top: 1px solid var(--border); color: var(--text-secondary);
+      border-left: 3px solid transparent;
+    }
+    .status-strip.ok {
+      color: #b5f0c9; background: var(--ok-bg); border-left-color: var(--ok);
+    }
+    .status-strip.err {
+      color: #ffc9c9; background: var(--err-bg); border-left-color: var(--err);
+    }
+    .status-strip.loading {
+      border-left-color: var(--warn);
+      color: var(--text-secondary);
+    }
+    .status-strip.loading::before {
+      content: ""; display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%;
+      border: 2px solid var(--border-strong); border-top-color: var(--accent);
+      margin-right: 0.45rem; vertical-align: 0.05rem; animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .callout {
+      margin: 0 1rem 0.5rem; padding: 0.85rem 1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: rgba(0, 0, 0, 0.22);
+      font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45;
+    }
+    .callout strong { color: var(--text); font-weight: 600; }
+
+    .trace-panel {
+      flex: 1; min-height: 0; display: flex; flex-direction: column;
+      margin: 0 0.75rem 0.65rem; border: 1px solid var(--border); border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.22); overflow: hidden;
+    }
+    .trace-panel-header {
+      padding: 0.45rem 0.75rem; font-size: 0.7rem; font-weight: 650;
+      text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+      border-bottom: 1px solid var(--border); background: rgba(0, 0, 0, 0.15);
+    }
+    .trace-panel .trace-inner {
+      flex: 1; overflow: auto; max-height: min(42vh, 360px);
+      padding: 0.65rem 0.75rem;
+    }
+
+    details.trace-fold {
+      margin: 0 1rem 0.55rem; border: 1px solid var(--border); border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.22); overflow: hidden;
+    }
+    details.trace-fold summary {
+      cursor: pointer; padding: 0.58rem 0.95rem; font-size: 0.74rem; font-weight: 650;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; user-select: none;
+      list-style: none; display: flex; align-items: center; gap: 0.5rem;
+    }
+    details.trace-fold summary::-webkit-details-marker { display: none; }
+    details.trace-fold summary::before { content: "▸"; font-size: 0.65rem; opacity: 0.65; }
+    details.trace-fold[open] summary::before { content: "▾"; }
+    details.trace-fold summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+    .trace-inner { padding: 0 0.85rem 0.9rem; max-height: min(46vh, 400px); overflow: auto; }
+    .trace-step {
+      margin-bottom: 0.55rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      overflow: hidden; background: var(--surface);
+    }
+    .trace-step .head { padding: 0.42rem 0.7rem; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+    .trace-step.user .head { background: var(--user-msg); color: #9ec8ff; }
+    .trace-step.assistant .head { background: var(--bot-msg); color: #c9b4ff; }
+    .trace-step.tool .head { background: #15221c; color: #7ddea0; }
+    .trace-step .body { padding: 0.55rem 0.78rem; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
+    pre.args {
+      margin: 0.35rem 0 0; padding: 0.55rem; background: #070a0f; border-radius: 6px;
+      font-size: 0.72rem; overflow: auto; max-height: 140px;
+    }
+
+    .contact-panel {
+      margin: 0 1.15rem 0.35rem; padding: 0.75rem 1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: rgba(0, 0, 0, 0.2);
+    }
+    .contact-panel h3 {
+      margin: 0 0 0.5rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--muted);
+    }
+    .contact-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.5rem 0.75rem; align-items: end;
+    }
+    .contact-panel .hint-small { margin: 0.45rem 0 0; font-size: 0.76rem; color: var(--text-secondary); line-height: 1.4; }
+
+    .composer {
+      padding: 0.75rem 1.15rem; border-top: 1px solid var(--border);
+      display: flex; gap: 0.65rem; align-items: flex-end; flex-wrap: wrap;
+      background: linear-gradient(0deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 100%);
+    }
+    .composer textarea {
+      flex: 1; min-width: 200px; resize: vertical; min-height: 48px; max-height: 200px;
+    }
+    .composer-actions { display: flex; gap: 0.45rem; flex-shrink: 0; }
+
+    button.btn {
+      padding: 0.55rem 1.15rem; border: none; border-radius: var(--radius-sm);
+      background: var(--accent); color: #fff; font-weight: 600; cursor: pointer;
+      font-size: 0.86rem; font-family: inherit; white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button.btn:hover:not(:disabled) { background: var(--accent-hover); }
+    button.btn:active:not(:disabled) { transform: scale(0.98); }
+    button.btn:focus-visible { outline: none; box-shadow: var(--focus); }
+    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.btn.secondary {
+      background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+    }
+    button.btn.secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05); color: var(--text); border-color: var(--border-strong);
+    }
+
+    .pending-toolbar { margin-top: 0.55rem; display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; }
+    .pending-list {
+      font-size: 0.82rem; max-height: min(36vh, 220px); overflow: auto;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      margin-top: 0.55rem; background: rgba(0, 0, 0, 0.2);
+    }
+    .pending-list.is-empty { padding: 1rem; text-align: center; color: var(--muted); }
+    .pending-item {
+      padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; flex-wrap: wrap;
+    }
+    .pending-item:last-child { border-bottom: none; }
+    .pending-item code { font-size: 0.75rem; }
+
+    .side-card {
+      margin: 1rem 1.15rem; padding: 1rem 1.1rem; border-radius: var(--radius);
+      border: 1px solid var(--border); background: rgba(0, 0, 0, 0.18);
+      font-size: 0.88rem; line-height: 1.55; color: var(--text-secondary);
+    }
+    .side-card h3 {
+      margin: 0 0 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted);
+    }
+    .side-card p { margin: 0; }
+    .side-card strong { color: var(--text); }
+
+    code {
+      font-size: 0.78em; background: rgba(0, 0, 0, 0.4); padding: 0.1rem 0.35rem; border-radius: 4px;
+    }
+
+    .inbox-section { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 0.75rem 0.75rem; }
+    .inbox-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; }
+    .inbox-list {
+      flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: rgba(0, 0, 0, 0.18); max-height: min(32vh, 260px);
+    }
+    .inbox-item {
+      padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.82rem;
+    }
+    .inbox-item:last-child { border-bottom: none; }
+    .inbox-item .inbox-subj { font-weight: 650; color: var(--text); margin-bottom: 0.35rem; }
+    .inbox-item .inbox-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.4rem; }
+    .inbox-item .inbox-body {
+      white-space: pre-wrap; word-break: break-word; color: var(--text-secondary); line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="brand-tag">POC · Helpdesk</span>
+      <h1>Assistenza officina</h1>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Sezioni">
+      <button type="button" role="tab" aria-selected="true" class="active" data-tab="intake" id="tab-intake">Richiesta</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="assist" id="tab-assist">Dipendente</button>
+    </div>
+    <div class="header-meta">
+      <p class="hint">Smistamento automatico. Dopo il codice pratica puoi restare qui sulla chat; in Dipendente la pratica resta in attesa fino alla presa in carico.</p>
+    </div>
+  </header>
+
+  <main>
+    <section id="view-intake" class="view active" role="tabpanel" aria-labelledby="tab-intake">
+      <div class="panel panel-main">
+        <h2>Conversazione richiedente</h2>
+        <div class="chat-wrap">
+          <div class="chat-empty" id="empty-intake" aria-hidden="false">
+            <div class="chat-empty-icon" aria-hidden="true">✉</div>
+            <p>Nessun messaggio</p>
+            <p class="chat-empty-hint">Scrivi sotto come se fosse un’email o un messaggio dal cliente.</p>
+          </div>
+          <div class="scroll chat-scroll" id="chat-intake"></div>
+        </div>
+        <div class="contact-panel" id="intake-contact-panel">
+          <h3>Dati contatto — questa richiesta</h3>
+          <div class="contact-grid">
+            <div class="field">
+              <label for="contact-first">Nome</label>
+              <input type="text" id="contact-first" class="field-sm" autocomplete="given-name" maxlength="120" />
+            </div>
+            <div class="field">
+              <label for="contact-last">Cognome</label>
+              <input type="text" id="contact-last" class="field-sm" autocomplete="family-name" maxlength="120" />
+            </div>
+            <div class="field" style="grid-column: span 2; min-width: 220px">
+              <label for="contact-email">Email</label>
+              <input type="email" id="contact-email" class="field-sm" style="max-width: 340px" autocomplete="email" maxlength="320" placeholder="es. mario@azienda.it" />
+            </div>
+          </div>
+          <p class="hint-small">Obbligatori per inviare: valori di prova vanno bene se l’indirizzo ha formato email valido. I dati sono inviati con ogni messaggio e ricordati per questa sessione.</p>
+        </div>
+        <div class="status-strip" id="status-intake" role="status">Pronto. Simula una mail in arrivo.</div>
+        <div class="composer">
+          <textarea id="input-intake" placeholder="Testo della richiesta cliente…" rows="2" aria-label="Messaggio richiesta"></textarea>
+          <div class="composer-actions">
+            <button type="button" class="btn" id="send-intake">Invia</button>
+            <button type="button" class="btn secondary" id="new-intake">Pulisci</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel panel-side">
+        <h2>Elaborazione tecnica</h2>
+        <div class="trace-panel">
+          <div class="trace-panel-header">Ultimo turno <span id="trace-count-intake"></span></div>
+          <div class="trace-inner" id="trace-intake"></div>
+        </div>
+        <h2>Posta dal reparto (simulata)</h2>
+        <div class="inbox-section">
+          <div class="inbox-toolbar">
+            <span class="hint" style="margin:0">Pratica: <code id="inbox-ticket-label" style="font-size:0.8rem">—</code></span>
+            <button type="button" class="btn secondary" id="refresh-inbox" style="padding:0.4rem 0.75rem;font-size:0.8rem">Aggiorna</button>
+          </div>
+          <div class="inbox-list" id="inbox-list"></div>
+        </div>
+        <div class="scroll scroll-muted" style="flex:0;padding:0 0.75rem 1rem">
+          <div class="side-card" style="margin:0">
+            <h3>Checklist</h3>
+            <p>Compila il <strong>modulo contatto</strong> sotto la chat (nome, cognome, email). L’agente usa questi dati per il ticket; in chat può chiedere solo eventuali conferme (es. autorizzazione), non di nuovo email o nome.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-assist" class="view" role="tabpanel" aria-labelledby="tab-assist" hidden>
+      <div class="panel panel-main" style="display:flex;flex-direction:column">
+        <h2>Area operatore</h2>
+        <div class="scroll" style="flex:0 0 auto;padding-bottom:0.35rem">
+          <div class="panel-row">
+            <div class="field">
+              <label for="dept-assist">Reparto</label>
+              <select id="dept-assist" class="field-sm">
+                <option value="vendita">Vendita</option>
+                <option value="acquisto">Acquisto</option>
+                <option value="manutenzione">Manutenzione</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="ticket-assist">Codice pratica</label>
+              <input class="field-sm" id="ticket-assist" placeholder="N. pratica (es. 4) dall’intake o dalla coda" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="emp-assist">Operatore</label>
+              <select class="field-sm" id="emp-assist" title="Elenco dal database del reparto"></select>
+            </div>
+          </div>
+          <div class="callout" role="note">
+            Le pratiche da intake sono <strong>in attesa di accettazione</strong>: compaiono nell’elenco sotto finché qualcuno non prende in carico.
+          </div>
+          <div class="pending-toolbar">
+            <button type="button" class="btn secondary" id="load-pending">Aggiorna coda</button>
+            <button type="button" class="btn secondary" id="accept-ticket">Prendi in carico</button>
+          </div>
+          <div class="pending-list" id="pending-box"></div>
+        </div>
+        <h2>Chat operatore</h2>
+        <div class="chat-wrap" style="flex:1;min-height:180px">
+          <div class="chat-empty hidden" id="empty-assist" aria-hidden="true">
+            <div class="chat-empty-icon" aria-hidden="true">◇</div>
+            <p>Chat non attiva</p>
+            <p class="chat-empty-hint">Scegli reparto, codice pratica e operatore, poi prendi in carico la pratica per chattare con l’assistente.</p>
+          </div>
+          <div class="scroll chat-scroll" id="chat-assist" style="flex:1"></div>
+        </div>
+        <div class="status-strip" id="status-assist" role="status">Compila i campi sopra e prendi in carico.</div>
+        <div class="composer">
+          <textarea id="input-assist" placeholder="Scrivi all’assistente dopo la presa in carico…" rows="2" aria-label="Messaggio assistenza"></textarea>
+          <div class="composer-actions">
+            <button type="button" class="btn" id="send-assist">Invia</button>
+            <button type="button" class="btn secondary" id="new-assist">Nuova conversazione</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel panel-side">
+        <h2>Elaborazione tecnica</h2>
+        <div class="trace-panel">
+          <div class="trace-panel-header">Ultimo turno <span id="trace-count-assist"></span></div>
+          <div class="trace-inner" id="trace-assist"></div>
+        </div>
+        <div class="scroll scroll-muted" style="flex:1;min-height:0;padding:0.5rem 0.75rem 1rem">
+          <div class="side-card" style="margin:0">
+            <h3>Tool dipendente</h3>
+            <p>Chiedi riepilogo ticket, clienti, aggiornamento stato (<code>update_ticket_status</code>). Per contattare il richiedente: chiedi di inviare una <strong>mail simulata</strong> — registrata e visibile nel tab Richiesta.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const LS_INTAKE = "poc_intake_thread";
+    const LS_LAST_TICKET = "poc_last_ticket_id";
+    const LS_CONTACT_PREFIX = "poc_intake_contact_";
+    const LS_CONTACT_DRAFT = "poc_intake_contact_draft";
+    const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function contactKeyForTid(tid) {
+      return tid ? LS_CONTACT_PREFIX + tid : LS_CONTACT_DRAFT;
+    }
+    function readContactFields() {
+      return {
+        contact_first_name: document.getElementById("contact-first").value.trim(),
+        contact_last_name: document.getElementById("contact-last").value.trim(),
+        contact_email: document.getElementById("contact-email").value.trim(),
+      };
+    }
+    function applyContactFields(o) {
+      const f = document.getElementById("contact-first");
+      const l = document.getElementById("contact-last");
+      const e = document.getElementById("contact-email");
+      if (!f || !l || !e) return;
+      if (!o) { f.value = ""; l.value = ""; e.value = ""; return; }
+      f.value = o.contact_first_name || "";
+      l.value = o.contact_last_name || "";
+      e.value = o.contact_email || "";
+    }
+    function persistContactDraftOrThread() {
+      const tid = localStorage.getItem(LS_INTAKE);
+      try {
+        localStorage.setItem(contactKeyForTid(tid || null), JSON.stringify(readContactFields()));
+      } catch (_) { /* ignore quota */ }
+    }
+    function loadContactForCurrentSession() {
+      const tid = localStorage.getItem(LS_INTAKE);
+      const raw = localStorage.getItem(contactKeyForTid(tid || null));
+      if (!raw) return;
+      try { applyContactFields(JSON.parse(raw)); } catch (_) {}
+    }
+    function saveContactAfterSuccess(threadId) {
+      if (!threadId) return;
+      localStorage.setItem(contactKeyForTid(threadId), JSON.stringify(readContactFields()));
+      localStorage.removeItem(LS_CONTACT_DRAFT);
+    }
+    const emptyIntake = document.getElementById("empty-intake");
+    const emptyAssist = document.getElementById("empty-assist");
+
+    function lsAssistKey() {
+      return "poc_assist_" + document.getElementById("dept-assist").value + "_" +
+        document.getElementById("ticket-assist").value.trim() + "_" +
+        document.getElementById("emp-assist").value.trim();
+    }
+
+    function syncIntakeEmpty() {
+      const chat = document.getElementById("chat-intake");
+      const show = chat.children.length === 0;
+      emptyIntake.classList.toggle("hidden", !show);
+      emptyIntake.setAttribute("aria-hidden", show ? "false" : "true");
+    }
+
+    function updateInboxTicketLabel() {
+      const tid = localStorage.getItem(LS_LAST_TICKET) || "";
+      const el = document.getElementById("inbox-ticket-label");
+      el.textContent = tid || "—";
+      if (tid) el.title = "Pratica #" + tid;
+      else el.removeAttribute("title");
+    }
+
+    async function loadSimulatedInbox() {
+      updateInboxTicketLabel();
+      const box = document.getElementById("inbox-list");
+      const tid = localStorage.getItem(LS_LAST_TICKET);
+      if (!tid) {
+        box.innerHTML = '<div class="inbox-item"><span class="hint">Compare dopo che apri un ticket dall’intake.</span></div>';
+        return;
+      }
+      const r = await fetch("/intake/simulated-mails?ticket_id=" + encodeURIComponent(tid));
+      const d = await r.json();
+      if (!r.ok) {
+        box.innerHTML = '<div class="inbox-item"><span class="hint">' + esc(typeof d.detail === "string" ? d.detail : JSON.stringify(d)) + "</span></div>";
+        return;
+      }
+      box.innerHTML = "";
+      const list = d.messages || [];
+      if (!list.length) {
+        box.innerHTML = '<div class="inbox-item"><span class="hint">Nessun messaggio dal reparto ancora. Quando il dipendente invia una mail simulata, apparirà qui.</span></div>';
+        return;
+      }
+      for (const m of list) {
+        const row = document.createElement("div");
+        row.className = "inbox-item";
+        row.innerHTML =
+          '<div class="inbox-meta">' + esc(d.department || "") + " · " + esc(m.created_at || "") + " · → " + esc(m.to_email || "") + "</div>" +
+          '<div class="inbox-subj">' + esc(m.subject || "(senza oggetto)") + "</div>" +
+          '<div class="inbox-body">' + esc(m.body || "") + "</div>";
+        box.appendChild(row);
+      }
+    }
+
+    function syncAssistEmpty() {
+      const chat = document.getElementById("chat-assist");
+      const ticketId = document.getElementById("ticket-assist").value.trim();
+      const empId = document.getElementById("emp-assist").value.trim();
+      const tid = localStorage.getItem(lsAssistKey());
+      const show = chat.children.length === 0 && (!tid || !ticketId || !empId);
+      emptyAssist.classList.toggle("hidden", !show);
+      emptyAssist.setAttribute("aria-hidden", show ? "false" : "true");
+    }
+
+    async function fillEmployeeDropdown(dept, opts) {
+      opts = opts || {};
+      const preserve = Object.prototype.hasOwnProperty.call(opts, "preserveId")
+        ? opts.preserveId
+        : document.getElementById("emp-assist").value;
+      const sel = document.getElementById("emp-assist");
+      const keep = preserve;
+      sel.innerHTML = '<option value="">— Seleziona operatore —</option>';
+      try {
+        const r = await fetch("/departments/" + encodeURIComponent(dept) + "/employees");
+        const d = await r.json();
+        if (!r.ok) {
+          throw new Error(typeof d.detail === "string" ? d.detail : JSON.stringify(d));
+        }
+        (d.employees || []).forEach((e) => {
+          const opt = document.createElement("option");
+          opt.value = e.id;
+          opt.textContent = e.name;
+          sel.appendChild(opt);
+        });
+      } catch (_err) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Errore caricamento elenco";
+        sel.appendChild(opt);
+      }
+      if (keep && Array.from(sel.options).some((o) => o.value === keep)) {
+        sel.value = keep;
+      }
+    }
+
+    function wirePendingUseButtons(box) {
+      box.querySelectorAll(".use-ticket").forEach((b) => {
+        b.addEventListener("click", () => {
+          document.getElementById("ticket-assist").value = b.getAttribute("data-id");
+          loadAssistThread();
+        });
+      });
+    }
+
+    function renderPendingList(tickets) {
+      const box = document.getElementById("pending-box");
+      box.classList.remove("is-empty");
+      if (!tickets || !tickets.length) {
+        box.innerHTML = "";
+        box.classList.add("is-empty");
+        box.textContent = "Nessuna pratica in coda per questo reparto.";
+        return;
+      }
+      box.innerHTML = "";
+      tickets.forEach((t) => {
+        const row = document.createElement("div");
+        row.className = "pending-item";
+        row.innerHTML = "<span><code>" + esc(t.id) + "</code> — " + esc(t.title || "") + "</span>" +
+          "<button type='button' class='btn secondary use-ticket' data-id='" + esc(t.id) + "'>Usa</button>";
+        box.appendChild(row);
+      });
+      wirePendingUseButtons(box);
+    }
+
+    async function loadPendingTickets() {
+      const dept = document.getElementById("dept-assist").value;
+      const box = document.getElementById("pending-box");
+      box.classList.remove("is-empty");
+      box.innerHTML = "";
+      const r = await fetch("/departments/" + encodeURIComponent(dept) + "/tickets/pending");
+      const d = await r.json();
+      if (!r.ok) {
+        box.classList.add("is-empty");
+        box.textContent = typeof d.detail === "string" ? d.detail : JSON.stringify(d);
+        return;
+      }
+      renderPendingList(d.tickets || []);
+    }
+
+    function esc(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    /** FastAPI detail: stringa | array validazione | altro */
+    function formatApiError(d, status) {
+      const st = status != null ? String(status) : "";
+      if (d == null || typeof d !== "object") {
+        return st ? "Errore HTTP " + st : "Errore di rete o risposta non valida.";
+      }
+      const det = d.detail;
+      if (typeof det === "string" && det.trim()) return det;
+      if (Array.isArray(det) && det.length) {
+        const parts = det.map((x) => {
+          if (x && typeof x === "object" && "msg" in x) return String(x.msg);
+          try {
+            return JSON.stringify(x);
+          } catch {
+            return String(x);
+          }
+        });
+        const joined = parts.join(" · ");
+        return joined || (st ? "Errore HTTP " + st : "Errore sconosciuto.");
+      }
+      try {
+        const s = JSON.stringify(det != null && det !== "" ? det : d);
+        if (s && s !== "{}") return s;
+      } catch (_) { /* ignore */ }
+      return st ? "Errore HTTP " + st : "Errore sconosciuto.";
+    }
+
+    function setStatus(el, text, kind) {
+      el.textContent = text;
+      el.className = "status-strip" + (kind === "ok" ? " ok" : kind === "err" ? " err" : kind === "loading" ? " loading" : "");
+    }
+
+    function renderTrace(el, steps, countEl) {
+      el.innerHTML = "";
+      const n = steps && steps.length ? steps.length : 0;
+      if (countEl) countEl.textContent = n ? "(" + n + " passaggi)" : "";
+      if (!steps || !steps.length) {
+        el.innerHTML = '<p class="hint" style="margin:0;font-size:0.8rem;color:var(--muted)">Nessun passaggio per questo invio.</p>';
+        return;
+      }
+      for (const s of steps) {
+        const box = document.createElement("div");
+        const ui = s.ui || {};
+        const head = ui.title || (s.kind === "user" ? "Richiesta cliente" : s.kind === "assistant" ? "Assistente" : (s.tool_name ? "Gestionale · " + s.tool_name : "Gestionale"));
+        const summary = typeof ui.summary === "string" ? ui.summary : "";
+
+        if (s.kind === "user") {
+          box.className = "trace-step user";
+          const body = summary || s.content || "";
+          box.innerHTML = '<div class="head">' + esc(head) + '</div><div class="body">' + esc(body) + "</div>";
+        } else if (s.kind === "assistant") {
+          box.className = "trace-step assistant";
+          let inner = '<div class="head">' + esc(head) + '</div><div class="body">';
+          if (summary) inner += esc(summary);
+          else if (s.content) inner += esc(s.content);
+          if (s.tool_calls && s.tool_calls.length) {
+            inner += "<div style='margin-top:0.45rem;font-size:0.76rem;color:var(--muted)'>Operazioni sul gestionale</div>";
+            for (const tc of s.tool_calls) {
+              inner += "<details style='margin-top:0.35rem'><summary style=\"cursor:pointer;font-size:0.78rem\">Dettaglio · " + esc(tc.name || "?") + "</summary><pre class=\"args\">" + esc(JSON.stringify(tc.args || {}, null, 2)) + "</pre></details>";
+            }
+          }
+          const longText = (s.content || "").length > 500;
+          if (!s.tool_calls && longText && s.content && summary !== s.content) {
+            inner += "<details style='margin-top:0.35rem'><summary style=\"cursor:pointer;font-size:0.78rem\">Testo completo</summary><div style='margin-top:0.35rem'>" + esc(s.content) + "</div></details>";
+          }
+          inner += "</div>";
+          box.innerHTML = inner;
+        } else if (s.kind === "tool") {
+          box.className = "trace-step tool";
+          const bodyText = summary || (s.content || "");
+          let html = '<div class="head">' + esc(head) + '</div><div class="body">' + esc(bodyText) + "</div>";
+          if (ui.show_raw && s.content && summary && String(s.content).trim() !== String(summary).trim()) {
+            html += "<details style='margin:0.35rem 0.78rem 0.65rem'><summary style=\"cursor:pointer;font-size:0.76rem;color:var(--muted)\">Risposta grezza</summary><pre class=\"args\">" + esc(s.content) + "</pre></details>";
+          }
+          box.innerHTML = html;
+        }
+        el.appendChild(box);
+      }
+    }
+
+    function appendChat(el, role, text) {
+      const div = document.createElement("div");
+      div.className = "msg " + (role === "user" ? "user" : "bot");
+      div.innerHTML = '<div class="role">' + (role === "user" ? "Tu" : "Assistente") + "</div><div class='msg-body'>" + esc(text).replace(/\n/g, "<br/>") + "</div>";
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+      if (el.id === "chat-intake") syncIntakeEmpty();
+      if (el.id === "chat-assist") syncAssistEmpty();
+    }
+
+    function fillChatFromTranscript(el, messages) {
+      el.innerHTML = "";
+      for (const m of messages || []) {
+        if (m.role === "user") appendChat(el, "user", m.content || "");
+        else if (m.role === "assistant") appendChat(el, "bot", m.content || "");
+      }
+      if (el.id === "chat-intake") syncIntakeEmpty();
+      if (el.id === "chat-assist") syncAssistEmpty();
+    }
+
+    document.querySelectorAll(".tabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach((b) => {
+          b.classList.remove("active");
+          b.setAttribute("aria-selected", "false");
+        });
+        btn.classList.add("active");
+        btn.setAttribute("aria-selected", "true");
+        const t = btn.getAttribute("data-tab");
+        const vIn = document.getElementById("view-intake");
+        const vAs = document.getElementById("view-assist");
+        vIn.classList.toggle("active", t === "intake");
+        vAs.classList.toggle("active", t === "assist");
+        vIn.hidden = t !== "intake";
+        vAs.hidden = t !== "assist";
+        if (t === "assist") {
+          (async () => {
+            await fillEmployeeDropdown(document.getElementById("dept-assist").value);
+            const pref = sessionStorage.getItem("poc_prefetch_pending");
+            if (pref && document.getElementById("dept-assist").value === pref) {
+              sessionStorage.removeItem("poc_prefetch_pending");
+              await loadPendingTickets();
+            }
+          })();
+        } else if (t === "intake") {
+          loadSimulatedInbox();
+        }
+        syncAssistEmpty();
+      });
+    });
+
+    const chatIn = document.getElementById("chat-intake");
+    const traceIn = document.getElementById("trace-intake");
+    const countIn = document.getElementById("trace-count-intake");
+    const stIn = document.getElementById("status-intake");
+    const btnSendIn = document.getElementById("send-intake");
+
+    async function loadIntakeThread() {
+      const tid = localStorage.getItem(LS_INTAKE);
+      traceIn.innerHTML = "";
+      countIn.textContent = "";
+      if (!tid) {
+        chatIn.innerHTML = "";
+        syncIntakeEmpty();
+        setStatus(stIn, "Nessuna conversazione salvata. Scrivi per iniziare.", "");
+        return;
+      }
+      const r = await fetch("/intake/thread?thread_id=" + encodeURIComponent(tid));
+      const d = await r.json();
+      if (!r.ok) { setStatus(stIn, JSON.stringify(d), "err"); return; }
+      fillChatFromTranscript(chatIn, d.messages);
+      setStatus(stIn, "Sessione " + tid.slice(0, 8) + "… · Dettaglio tecnico nel pannello a destra.", "ok");
+    }
+
+    document.getElementById("new-intake").addEventListener("click", () => {
+      const oldTid = localStorage.getItem(LS_INTAKE);
+      if (oldTid) localStorage.removeItem(contactKeyForTid(oldTid));
+      localStorage.removeItem(LS_CONTACT_DRAFT);
+      localStorage.removeItem(LS_INTAKE);
+      localStorage.removeItem(LS_LAST_TICKET);
+      applyContactFields(null);
+      chatIn.innerHTML = "";
+      syncIntakeEmpty();
+      renderTrace(traceIn, [], countIn);
+      setStatus(stIn, "Conversazione azzerata.", "");
+      loadSimulatedInbox();
+    });
+
+    ["contact-first", "contact-last", "contact-email"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("blur", persistContactDraftOrThread);
+    });
+
+    document.getElementById("refresh-inbox").addEventListener("click", () => {
+      loadSimulatedInbox();
+    });
+
+    document.getElementById("send-intake").addEventListener("click", async () => {
+      const msg = document.getElementById("input-intake").value.trim();
+      if (!msg) return;
+      const c = readContactFields();
+      if (!c.contact_first_name || !c.contact_last_name || !c.contact_email) {
+        setStatus(stIn, "Compila nome, cognome e email nel modulo contatto.", "err");
+        return;
+      }
+      if (!EMAIL_OK.test(c.contact_email)) {
+        setStatus(stIn, "Email: inserisci un indirizzo con formato valido (es. nome@dominio.it).", "err");
+        return;
+      }
+      const tid = localStorage.getItem(LS_INTAKE);
+      setStatus(stIn, "Elaborazione in corso…", "loading");
+      btnSendIn.disabled = true;
+      appendChat(chatIn, "user", msg);
+      document.getElementById("input-intake").value = "";
+      try {
+        const payload = { message: msg, ...c };
+        if (tid) payload.thread_id = tid;
+        const r = await fetch("/intake/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setStatus(stIn, formatApiError(d, r.status), "err");
+          return;
+        }
+        if (d.thread_id) {
+          localStorage.setItem(LS_INTAKE, d.thread_id);
+          saveContactAfterSuccess(d.thread_id);
+        }
+        appendChat(chatIn, "bot", d.reply || "");
+        renderTrace(traceIn, d.trace || [], countIn);
+        if (d.ticket_id) {
+          localStorage.setItem(LS_LAST_TICKET, d.ticket_id);
+          loadSimulatedInbox();
+        }
+        const routed = await applyIntakeRoutingToAssist(d);
+        const hasTicket = routed || !!d.ticket_id;
+        setStatus(
+          stIn,
+          hasTicket
+            ? (routed
+                ? "Inoltrato: reparto e codice pratica salvati per il tab Dipendente (puoi restare qui). La pratica è in coda finché non viene presa in carico. Aprendo Dipendente, la coda si può aggiornare da sola."
+                : "Inoltrato: usa il tab Dipendente con codice e reparto dalla risposta.")
+            : "Sessione " + (d.thread_id || "").slice(0, 8) + "…",
+          "ok"
+        );
+      } finally {
+        btnSendIn.disabled = false;
+      }
+    });
+
+    const chatAs = document.getElementById("chat-assist");
+    const traceAs = document.getElementById("trace-assist");
+    const countAs = document.getElementById("trace-count-assist");
+    const stAs = document.getElementById("status-assist");
+    const btnSendAs = document.getElementById("send-assist");
+
+    async function applyIntakeRoutingToAssist(d) {
+      if (!d || !d.routed_department || !d.ticket_id) return false;
+      localStorage.setItem(LS_LAST_TICKET, d.ticket_id);
+      updateInboxTicketLabel();
+      document.getElementById("dept-assist").value = d.routed_department;
+      document.getElementById("ticket-assist").value = d.ticket_id;
+      sessionStorage.setItem("poc_prefetch_pending", d.routed_department);
+      await fillEmployeeDropdown(d.routed_department, { preserveId: "" });
+      loadAssistThread();
+      return true;
+    }
+
+    async function loadAssistThread() {
+      const dept = document.getElementById("dept-assist").value;
+      const ticketId = document.getElementById("ticket-assist").value.trim();
+      const empId = document.getElementById("emp-assist").value.trim();
+      const tid = localStorage.getItem(lsAssistKey());
+      renderTrace(traceAs, [], countAs);
+      if (!tid || !ticketId || !empId) {
+        chatAs.innerHTML = "";
+        syncAssistEmpty();
+        setStatus(
+          stAs,
+          !ticketId
+            ? "Inserisci il codice pratica e scegli l’operatore."
+            : !empId
+              ? "Scegli l’operatore dal menu."
+              : "Dopo la presa in carico, invia un messaggio per iniziare la chat con l’assistente.",
+          ""
+        );
+        return;
+      }
+      const url = "/assist/thread?department=" + encodeURIComponent(dept) + "&ticket_id=" + encodeURIComponent(ticketId) + "&employee_id=" + encodeURIComponent(empId) + "&thread_id=" + encodeURIComponent(tid);
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!r.ok) { setStatus(stAs, JSON.stringify(d), "err"); syncAssistEmpty(); return; }
+      fillChatFromTranscript(chatAs, d.messages);
+      setStatus(stAs, "Cronologia caricata.", "ok");
+      syncAssistEmpty();
+    }
+
+    document.getElementById("load-pending").addEventListener("click", () => {
+      loadPendingTickets();
+    });
+
+    document.getElementById("accept-ticket").addEventListener("click", async () => {
+      const dept = document.getElementById("dept-assist").value;
+      const ticketId = document.getElementById("ticket-assist").value.trim();
+      const empId = document.getElementById("emp-assist").value.trim();
+      if (!ticketId || !empId) {
+        setStatus(stAs, "Servono codice pratica e operatore selezionato.", "err");
+        return;
+      }
+      const r = await fetch("/departments/" + encodeURIComponent(dept) + "/tickets/" + encodeURIComponent(ticketId) + "/accept", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ employee_id: empId }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setStatus(stAs, "Presa in carico riuscita. Puoi usare la chat qui sotto.", "ok");
+        await loadPendingTickets();
+      } else {
+        setStatus(stAs, typeof d.detail === "string" ? d.detail : JSON.stringify(d.detail || d), "err");
+      }
+    });
+
+    document.getElementById("new-assist").addEventListener("click", () => {
+      localStorage.removeItem(lsAssistKey());
+      document.getElementById("emp-assist").value = "";
+      chatAs.innerHTML = "";
+      syncAssistEmpty();
+      renderTrace(traceAs, [], countAs);
+      setStatus(stAs, "Nuova sessione chat (stessi ticket e operatore → nuovo thread).", "");
+    });
+
+    document.getElementById("send-assist").addEventListener("click", async () => {
+      const msg = document.getElementById("input-assist").value.trim();
+      if (!msg) return;
+      const dept = document.getElementById("dept-assist").value;
+      const ticketId = document.getElementById("ticket-assist").value.trim();
+      const empId = document.getElementById("emp-assist").value.trim();
+      if (!ticketId || !empId) {
+        setStatus(stAs, "Compila codice pratica e operatore prima di inviare.", "err");
+        return;
+      }
+      const tid = localStorage.getItem(lsAssistKey());
+      setStatus(stAs, "Elaborazione…", "loading");
+      btnSendAs.disabled = true;
+      appendChat(chatAs, "user", msg);
+      document.getElementById("input-assist").value = "";
+      try {
+        const payload = { department: dept, ticket_id: ticketId, employee_id: empId, message: msg };
+        if (tid) payload.thread_id = tid;
+        const r = await fetch("/assist/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setStatus(stAs, typeof d.detail === "string" ? d.detail : JSON.stringify(d.detail || d), "err");
+          return;
+        }
+        localStorage.setItem(lsAssistKey(), d.thread_id);
+        appendChat(chatAs, "bot", d.reply || "");
+        renderTrace(traceAs, d.trace || [], countAs);
+        setStatus(stAs, "Messaggio inviato · sessione " + (d.thread_id || "").slice(0, 8) + "…", "ok");
+        const lastT = localStorage.getItem(LS_LAST_TICKET);
+        if (lastT === ticketId) loadSimulatedInbox();
+      } finally {
+        btnSendAs.disabled = false;
+      }
+    });
+
+    document.getElementById("dept-assist").addEventListener("change", async () => {
+      await fillEmployeeDropdown(document.getElementById("dept-assist").value);
+      loadAssistThread();
+    });
+    ["ticket-assist", "emp-assist"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", loadAssistThread);
+      document.getElementById(id).addEventListener("blur", loadAssistThread);
+    });
+
+    document.getElementById("input-intake").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("send-intake").click(); }
+    });
+    document.getElementById("input-assist").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("send-assist").click(); }
+    });
+
+    loadIntakeThread().then(() => loadContactForCurrentSession());
+    fillEmployeeDropdown(document.getElementById("dept-assist").value).then(() => loadAssistThread());
+    syncIntakeEmpty();
+    syncAssistEmpty();
+    updateInboxTicketLabel();
+    loadSimulatedInbox();
+    setInterval(() => {
+      if (document.getElementById("view-intake").classList.contains("active") && localStorage.getItem(LS_LAST_TICKET)) {
+        loadSimulatedInbox();
+      }
+    }, 8000);
+  </script>
+</body>
+</html>
