@@ -3,1034 +3,1181 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Assistenza — intake + dipendente</title>
+  <title>HELPER — Intake + Operatore</title>
   <style>
     :root {
-      --bg: #0b0f14;
-      --bg-elevated: #111820;
-      --surface: #161d28;
-      --surface-hover: #1c2532;
-      --border: #2a3545;
-      --border-strong: #3d4d63;
-      --text: #e9eef5;
-      --text-secondary: #9aaaba;
-      --muted: #7a8b9e;
-      --accent: #3b8bff;
-      --accent-hover: #5a9eff;
-      --accent-muted: rgba(59, 139, 255, 0.14);
-      --user-msg: #182636;
-      --bot-msg: #241f38;
-      --ok: #3dcf6e;
-      --ok-bg: rgba(61, 207, 110, 0.12);
-      --err: #ff7b7b;
-      --err-bg: rgba(255, 123, 123, 0.1);
-      --warn: #e8b84a;
+      --bg: #0c1017;
+      --panel: #121824;
+      --border: #2a3444;
+      --text: #e8edf4;
+      --muted: #8b9aac;
+      --accent: #3d8bfd;
+      --ok: #3dd68c;
+      --err: #f07178;
       --radius: 10px;
-      --radius-sm: 8px;
-      --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
-      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
-      --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      --font: system-ui, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
-      display: flex; flex-direction: column; font-family: var(--font);
-      font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
-    }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; font-size: 15px; }
     header {
-      padding: 0.75rem 1.25rem 0.85rem;
+      padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: flex-start; gap: 1rem 1.5rem; flex-wrap: wrap;
-      background: linear-gradient(165deg, var(--bg-elevated) 0%, var(--bg) 55%);
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+      background: var(--panel);
     }
-    .brand { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-    header h1 {
-      margin: 0; font-size: 1.2rem; font-weight: 650; letter-spacing: -0.03em; line-height: 1.25;
-    }
-    .brand-tag {
-      font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
-      color: var(--muted);
-    }
-    .tabs {
-      display: inline-flex; padding: 3px; gap: 2px; border-radius: 12px;
-      background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border);
-    }
+    header h1 { margin: 0; font-size: 1.1rem; font-weight: 650; }
+    .tabs { display: flex; gap: 4px; background: rgba(0,0,0,.25); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
     .tabs button {
-      padding: 0.5rem 1rem; border: none; border-radius: 9px;
-      background: transparent; color: var(--text-secondary); cursor: pointer;
-      font-size: 0.82rem; font-weight: 550; font-family: inherit;
-      transition: background 0.18s, color 0.18s;
+      border: none; padding: 0.45rem 0.9rem; border-radius: 8px; cursor: pointer;
+      background: transparent; color: var(--muted); font-family: inherit; font-size: 0.85rem; font-weight: 550;
     }
-    .tabs button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
-    .tabs button:focus-visible { outline: none; box-shadow: var(--focus); }
-    .tabs button.active {
-      background: var(--accent); color: #fff; font-weight: 600;
-      box-shadow: 0 1px 8px rgba(59, 139, 255, 0.35);
-    }
-    .header-meta {
-      flex: 1; min-width: 200px; max-width: 36rem;
-    }
-    .hint { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45; margin: 0; }
+    .tabs button[aria-selected="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+    .hint { margin: 0; font-size: 0.8rem; color: var(--muted); max-width: 42rem; line-height: 1.45; }
 
-    .panel-row { display: flex; gap: 0.65rem 1rem; flex-wrap: wrap; align-items: flex-end; }
-    .field {
-      display: flex; flex-direction: column; gap: 0.28rem; min-width: 0;
-    }
-    .field label {
-      font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
-      color: var(--muted);
-    }
-    input, select, textarea {
-      background: var(--surface); color: var(--text); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 0.48rem 0.7rem; font-size: 0.88rem; font-family: inherit;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    input:hover, select:hover, textarea:hover { border-color: var(--border-strong); background: var(--surface-hover); }
-    input:focus-visible, select:focus-visible, textarea:focus-visible {
-      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted);
-    }
-    input.field-sm, select.field-sm { width: min(100%, 280px); min-width: 160px; }
-    select.field-sm { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239aaaba' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.65rem center; padding-right: 2rem; }
-
-    main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    main { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+    /* Solo classe is-on: evita conflitti con attributo [hidden] (display:none !important nei browser) */
     .view {
-      display: none; flex: 1; min-height: 0;
-      grid-template-columns: minmax(0, 1fr) minmax(272px, 340px); gap: 0;
+      display: none;
+      flex: 1;
+      min-height: min(70vh, 880px);
+      grid-template-columns: 1fr minmax(260px, 320px);
     }
-    .view.active { display: grid; }
-    @media (max-width: 1100px) {
-      .view.active { grid-template-columns: 1fr; }
-      .panel-side { border-top: 1px solid var(--border); max-height: 48vh; }
-    }
+    .view.is-on { display: grid; }
+    @media (max-width: 900px) { .view.is-on { grid-template-columns: 1fr; } }
 
-    .panel {
-      display: flex; flex-direction: column; min-height: 0;
-      border-right: 1px solid var(--border); background: var(--bg);
-    }
-    .panel-side {
-      background: var(--bg-elevated);
-      overflow: hidden;
-    }
-    .panel:last-child { border-right: none; }
-    .panel h2 {
-      margin: 0; padding: 0.6rem 1.15rem; font-size: 0.68rem; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.2); font-weight: 650;
-    }
+    .col-main, .col-side { min-height: 0; display: flex; flex-direction: column; }
+    .col-main { border-right: 1px solid var(--border); }
+    .col-side { background: #0e141c; }
 
-    .scroll { flex: 1; overflow: auto; padding: 1rem 1.15rem; }
-    .scroll-muted { background: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, transparent 120px); }
+    h2 { margin: 0; padding: 0.5rem 1rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); }
 
-    .chat-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
-    .chat-scroll {
-      flex: 1; overflow: auto; padding: 1rem 1.15rem;
-      display: flex; flex-direction: column; gap: 0.9rem; align-items: stretch;
-      max-width: 38rem; margin: 0 auto; width: 100%;
+    label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.25rem; font-weight: 600; }
+    input, select, textarea {
+      width: 100%; max-width: 320px;
+      padding: 0.45rem 0.65rem; border-radius: 8px; border: 1px solid var(--border);
+      background: #161d28; color: var(--text); font-family: inherit; font-size: 0.88rem;
     }
-    .chat-empty {
-      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; padding: 2rem 1.25rem; min-height: 200px; color: var(--text-secondary);
-      transition: opacity 0.2s;
-    }
-    .chat-empty.hidden { display: none; }
-    .chat-empty-icon {
-      width: 48px; height: 48px; border-radius: 14px; background: var(--accent-muted);
-      color: var(--accent); display: flex; align-items: center; justify-content: center;
-      font-size: 1.35rem; margin-bottom: 0.75rem;
-    }
-    .chat-empty p { margin: 0; font-size: 0.93rem; font-weight: 550; color: var(--text); }
-    .chat-empty .chat-empty-hint { margin-top: 0.35rem; font-size: 0.82rem; font-weight: 400; color: var(--muted); max-width: 22rem; }
+    textarea { max-width: none; min-height: 72px; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: flex-end; margin-bottom: 0.75rem; }
+    .field { min-width: 140px; }
 
-    .msg {
-      padding: 0.78rem 1.05rem; border-radius: 14px; font-size: 0.9rem;
-      line-height: 1.55; max-width: min(31rem, 100%);
-      box-shadow: var(--shadow); animation: msg-in 0.22s ease-out;
+    .btn {
+      padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 0.85rem;
     }
-    @keyframes msg-in {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: none; }
-    }
-    .msg.user {
-      background: var(--user-msg); border: 1px solid rgba(59, 139, 255, 0.18); align-self: flex-start; margin-right: auto;
-      border-bottom-left-radius: 5px;
-    }
-    .msg.bot {
-      background: var(--bot-msg); border: 1px solid rgba(180, 140, 255, 0.18); align-self: flex-end; margin-left: auto;
-      border-bottom-right-radius: 5px;
-    }
-    .msg .role {
-      font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
-      color: var(--muted); margin-bottom: 0.38rem;
-    }
-    .msg.user .role { color: #8ebfff; }
-    .msg.bot .role { color: #c9a8ff; }
+    .btn.secondary { background: #222a38; color: var(--text); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    .status-strip {
-      padding: 0.65rem 1.15rem 0.7rem; font-size: 0.86rem; line-height: 1.45;
-      background: var(--surface); border-top: 1px solid var(--border); color: var(--text-secondary);
-      border-left: 3px solid transparent;
-    }
-    .status-strip.ok {
-      color: #b5f0c9; background: var(--ok-bg); border-left-color: var(--ok);
-    }
-    .status-strip.err {
-      color: #ffc9c9; background: var(--err-bg); border-left-color: var(--err);
-    }
-    .status-strip.loading {
-      border-left-color: var(--warn);
-      color: var(--text-secondary);
-    }
-    .status-strip.loading::before {
-      content: ""; display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%;
-      border: 2px solid var(--border-strong); border-top-color: var(--accent);
-      margin-right: 0.45rem; vertical-align: 0.05rem; animation: spin 0.65s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .pad { padding: 0.75rem 160px 0.75rem 1rem; }
 
-    .callout {
-      margin: 0 1rem 0.5rem; padding: 0.85rem 1rem; border-radius: var(--radius);
-      border: 1px solid var(--border); background: rgba(0, 0, 0, 0.22);
-      font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45;
-    }
-    .callout strong { color: var(--text); font-weight: 600; }
+    .chat { flex: 1; overflow: auto; padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.6rem; max-width: 40rem; }
+    .bubble { padding: 0.65rem 0.85rem; border-radius: 12px; font-size: 0.9rem; line-height: 1.5; max-width: 100%; }
+    .bubble.u { align-self: flex-start; background: #182636; border: 1px solid rgba(61,139,253,.2); }
+    .bubble.a { align-self: flex-end; background: #241d32; border: 1px solid rgba(180,120,255,.2); }
+    .bubble .who { font-size: 0.65rem; color: var(--muted); margin-bottom: 0.25rem; font-weight: 700; text-transform: uppercase; }
 
-    .trace-panel {
-      flex: 1; min-height: 0; display: flex; flex-direction: column;
-      margin: 0 0.75rem 0.65rem; border: 1px solid var(--border); border-radius: var(--radius);
-      background: rgba(0, 0, 0, 0.22); overflow: hidden;
-    }
-    .trace-panel-header {
-      padding: 0.45rem 0.75rem; font-size: 0.7rem; font-weight: 650;
-      text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
-      border-bottom: 1px solid var(--border); background: rgba(0, 0, 0, 0.15);
-    }
-    .trace-panel .trace-inner {
-      flex: 1; overflow: auto; max-height: min(42vh, 360px);
-      padding: 0.65rem 0.75rem;
-    }
+    .status { padding: 0.5rem 1rem; font-size: 0.82rem; border-top: 1px solid var(--border); color: var(--muted); }
+    .status.ok { color: #a8e8c6; }
+    .status.err { color: #ffb4b4; }
+    .status.load { color: #e8c96a; }
 
-    details.trace-fold {
-      margin: 0 1rem 0.55rem; border: 1px solid var(--border); border-radius: var(--radius);
-      background: rgba(0, 0, 0, 0.22); overflow: hidden;
-    }
-    details.trace-fold summary {
-      cursor: pointer; padding: 0.58rem 0.95rem; font-size: 0.74rem; font-weight: 650;
-      color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; user-select: none;
-      list-style: none; display: flex; align-items: center; gap: 0.5rem;
-    }
-    details.trace-fold summary::-webkit-details-marker { display: none; }
-    details.trace-fold summary::before { content: "▸"; font-size: 0.65rem; opacity: 0.65; }
-    details.trace-fold[open] summary::before { content: "▾"; }
-    details.trace-fold summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
-    .trace-inner { padding: 0 0.85rem 0.9rem; max-height: min(46vh, 400px); overflow: auto; }
-    .trace-step {
-      margin-bottom: 0.55rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
-      overflow: hidden; background: var(--surface);
-    }
-    .trace-step .head { padding: 0.42rem 0.7rem; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
-    .trace-step.user .head { background: var(--user-msg); color: #9ec8ff; }
-    .trace-step.assistant .head { background: var(--bot-msg); color: #c9b4ff; }
-    .trace-step.tool .head { background: #15221c; color: #7ddea0; }
-    .trace-step .body { padding: 0.55rem 0.78rem; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
-    pre.args {
-      margin: 0.35rem 0 0; padding: 0.55rem; background: #070a0f; border-radius: 6px;
-      font-size: 0.72rem; overflow: auto; max-height: 140px;
-    }
+    .trace { flex: 1; overflow: auto; padding: 0.5rem 0.75rem; font-size: 0.78rem; }
 
-    .contact-panel {
-      margin: 0 1.15rem 0.35rem; padding: 0.75rem 1rem; border-radius: var(--radius);
-      border: 1px solid var(--border); background: rgba(0, 0, 0, 0.2);
-    }
-    .contact-panel h3 {
-      margin: 0 0 0.5rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--muted);
-    }
-    .contact-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 0.5rem 0.75rem; align-items: end;
-    }
-    .contact-panel .hint-small { margin: 0.45rem 0 0; font-size: 0.76rem; color: var(--text-secondary); line-height: 1.4; }
+    .callout { margin: 0 1rem 0.75rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+    .pending-list { margin: 0 1rem; border: 1px solid var(--border); border-radius: var(--radius); min-height: 3rem; font-size: 0.82rem; }
+    .pending-list.empty { padding: 0.75rem; color: var(--muted); }
+    .pending-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.45rem 0.65rem; border-bottom: 1px solid var(--border); }
+    .pending-row:last-child { border-bottom: none; }
 
-    .composer {
-      padding: 0.75rem 1.15rem; border-top: 1px solid var(--border);
-      display: flex; gap: 0.65rem; align-items: flex-end; flex-wrap: wrap;
-      background: linear-gradient(0deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 100%);
-    }
-    .composer textarea {
-      flex: 1; min-width: 200px; resize: vertical; min-height: 48px; max-height: 200px;
-    }
-    .composer-actions { display: flex; gap: 0.45rem; flex-shrink: 0; }
+    code { font-size: 0.85em; }
 
-    button.btn {
-      padding: 0.55rem 1.15rem; border: none; border-radius: var(--radius-sm);
-      background: var(--accent); color: #fff; font-weight: 600; cursor: pointer;
-      font-size: 0.86rem; font-family: inherit; white-space: nowrap;
-      transition: background 0.15s, transform 0.1s;
+    /* Esito API intake: non confondere con il testo del modello */
+    .api-outcome {
+      margin: 0 1rem 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      line-height: 1.45;
     }
-    button.btn:hover:not(:disabled) { background: var(--accent-hover); }
-    button.btn:active:not(:disabled) { transform: scale(0.98); }
-    button.btn:focus-visible { outline: none; box-shadow: var(--focus); }
-    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.btn.secondary {
-      background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
-    }
-    button.btn.secondary:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.05); color: var(--text); border-color: var(--border-strong);
-    }
+    .api-outcome.muted { background: rgba(0,0,0,.2); color: var(--muted); }
+    .api-outcome.ok { background: rgba(61,214,140,.08); border-color: rgba(61,214,140,.35); color: var(--text); }
+    .api-outcome.warn { background: rgba(240,113,120,.08); border-color: rgba(240,113,120,.35); color: var(--text); }
+    .api-outcome strong { color: var(--text); }
+    .api-outcome .row-actions { margin-top: 0.55rem; display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
 
-    .pending-toolbar { margin-top: 0.55rem; display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; }
-    .pending-list {
-      font-size: 0.82rem; max-height: min(36vh, 220px); overflow: auto;
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      margin-top: 0.55rem; background: rgba(0, 0, 0, 0.2);
+    .op-banner {
+      display: none;
+      margin: 0 1rem 0.75rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius);
+      border: 1px solid rgba(61,139,253,.4);
+      background: rgba(61,139,253,.1);
+      font-size: 0.8rem;
+      color: var(--text);
     }
-    .pending-list.is-empty { padding: 1rem; text-align: center; color: var(--muted); }
-    .pending-item {
-      padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border);
-      display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; flex-wrap: wrap;
-    }
-    .pending-item:last-child { border-bottom: none; }
-    .pending-item code { font-size: 0.75rem; }
+    .op-banner.is-on { display: block; }
 
-    .side-card {
-      margin: 1rem 1.15rem; padding: 1rem 1.1rem; border-radius: var(--radius);
-      border: 1px solid var(--border); background: rgba(0, 0, 0, 0.18);
-      font-size: 0.88rem; line-height: 1.55; color: var(--text-secondary);
+    .op-pr-wrap { margin: 0 1rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; font-size: 0.78rem; }
+    .op-pr-scroll { max-height: 240px; overflow: auto; }
+    .op-pr-head, .op-pr-row {
+      display: grid;
+      grid-template-columns: 4.2rem 7.2rem minmax(5rem, 1fr) minmax(5.5rem, 1fr) 6.5rem;
+      gap: 0.35rem;
+      padding: 0.35rem 0.5rem;
+      align-items: start;
     }
-    .side-card h3 {
-      margin: 0 0 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.08em; color: var(--muted);
+    .op-pr-head { font-weight: 700; color: var(--muted); background: #0e141c; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+    .op-pr-row { border-bottom: 1px solid var(--border); cursor: pointer; }
+    .op-pr-row:last-child { border-bottom: none; }
+    .op-pr-row:hover { background: rgba(61,139,253,.08); }
+    .op-pr-row.is-sel { background: rgba(61,139,253,.16); }
+    .op-mail-panel {
+      margin: 0 1rem 0.75rem;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.82rem;
     }
-    .side-card p { margin: 0; }
-    .side-card strong { color: var(--text); }
-
-    code {
-      font-size: 0.78em; background: rgba(0, 0, 0, 0.4); padding: 0.1rem 0.35rem; border-radius: 4px;
-    }
-
-    .inbox-section { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 0.75rem 0.75rem; }
-    .inbox-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; }
-    .inbox-list {
-      flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);
-      background: rgba(0, 0, 0, 0.18); max-height: min(32vh, 260px);
-    }
-    .inbox-item {
-      padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.82rem;
-    }
-    .inbox-item:last-child { border-bottom: none; }
-    .inbox-item .inbox-subj { font-weight: 650; color: var(--text); margin-bottom: 0.35rem; }
-    .inbox-item .inbox-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.4rem; }
-    .inbox-item .inbox-body {
-      white-space: pre-wrap; word-break: break-word; color: var(--text-secondary); line-height: 1.45;
-    }
+    .op-mail-panel h3 { margin: 0 0 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+    .op-mail-panel .field { margin-bottom: 0.5rem; }
+    .op-ticket-row { margin: 0 1rem 0.5rem; font-size: 0.78rem; color: var(--muted); }
+    .op-ticket-row select { max-width: 100%; }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand">
-      <span class="brand-tag">POC · Helpdesk</span>
-      <h1>Assistenza officina</h1>
+    <h1>HELPER · Assistenza officina (POC)</h1>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-in" aria-selected="true" aria-controls="view-in">Richiesta</button>
+      <button type="button" role="tab" id="tab-op" aria-selected="false" aria-controls="view-op">Dipendente</button>
     </div>
-    <div class="tabs" role="tablist" aria-label="Sezioni">
-      <button type="button" role="tab" aria-selected="true" class="active" data-tab="intake" id="tab-intake">Richiesta</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="assist" id="tab-assist">Dipendente</button>
-    </div>
-    <div class="header-meta">
-      <p class="hint">Smistamento automatico. Dopo il codice pratica puoi restare qui sulla chat; in Dipendente la pratica resta in attesa fino alla presa in carico.</p>
-    </div>
+    <p class="hint">API: intake <code>POST /intake/chat</code>; elenco pratiche reparto <code>GET /departments/{dept}/pratiche</code>; coda globale <code>GET /pratiche/pending</code>; presa in carico <code>POST …/accept</code>; mail al richiedente <code>POST …/pratiche/{id}/mail-richiedente</code>; assist <code>POST /assist/chat</code>.</p>
   </header>
 
   <main>
-    <section id="view-intake" class="view active" role="tabpanel" aria-labelledby="tab-intake">
-      <div class="panel panel-main">
-        <h2>Conversazione richiedente</h2>
-        <div class="chat-wrap">
-          <div class="chat-empty" id="empty-intake" aria-hidden="false">
-            <div class="chat-empty-icon" aria-hidden="true">✉</div>
-            <p>Nessun messaggio</p>
-            <p class="chat-empty-hint">Scrivi sotto come se fosse un’email o un messaggio dal cliente.</p>
+    <!-- === RICHIESTA (intake) === -->
+    <section id="view-in" class="view is-on" role="tabpanel" aria-labelledby="tab-in">
+      <div class="col-main">
+        <h2>Modulo richiedente + chat</h2>
+        <div class="pad">
+          <div class="row">
+            <div class="field"><label for="in-fn">Nome</label><input id="in-fn" type="text" autocomplete="given-name" /></div>
+            <div class="field"><label for="in-ln">Cognome</label><input id="in-ln" type="text" autocomplete="family-name" /></div>
+            <div class="field"><label for="in-em">Email</label><input id="in-em" type="email" autocomplete="email" /></div>
           </div>
-          <div class="scroll chat-scroll" id="chat-intake"></div>
+          <p class="callout">L’API richiede nome, cognome e email insieme per ogni messaggio. Risposta: <code>thread_id</code>, <code>reply</code>, <code>trace</code>, opzionali <code>routed_department</code> e <code>ticket_id</code> (solo se il tool ha aperto la pratica).</p>
         </div>
-        <div class="contact-panel" id="intake-contact-panel">
-          <h3>Dati contatto — questa richiesta</h3>
-          <div class="contact-grid">
-            <div class="field">
-              <label for="contact-first">Nome</label>
-              <input type="text" id="contact-first" class="field-sm" autocomplete="given-name" maxlength="120" />
-            </div>
-            <div class="field">
-              <label for="contact-last">Cognome</label>
-              <input type="text" id="contact-last" class="field-sm" autocomplete="family-name" maxlength="120" />
-            </div>
-            <div class="field" style="grid-column: span 2; min-width: 220px">
-              <label for="contact-email">Email</label>
-              <input type="email" id="contact-email" class="field-sm" style="max-width: 340px" autocomplete="email" maxlength="320" placeholder="es. mario@azienda.it" />
-            </div>
-          </div>
-          <p class="hint-small">Obbligatori per inviare: valori di prova vanno bene se l’indirizzo ha formato email valido. I dati sono inviati con ogni messaggio e ricordati per questa sessione.</p>
-        </div>
-        <div class="status-strip" id="status-intake" role="status">Pronto. Simula una mail in arrivo.</div>
-        <div class="composer">
-          <textarea id="input-intake" placeholder="Testo della richiesta cliente…" rows="2" aria-label="Messaggio richiesta"></textarea>
-          <div class="composer-actions">
-            <button type="button" class="btn" id="send-intake">Invia</button>
-            <button type="button" class="btn secondary" id="new-intake">Pulisci</button>
+        <div class="chat" id="chat-in"></div>
+        <div class="pad" style="padding-top:0">
+          <div class="row" style="align-items:center">
+            <textarea id="in-msg" placeholder="Messaggio al servizio assistenza… (Invio = invia, Shift+Invio = a capo)" style="flex:1;max-width:none"></textarea>
+            <button type="button" class="btn" id="in-send">Invia</button>
+            <button type="button" class="btn secondary" id="in-new">Nuova conversazione</button>
           </div>
         </div>
+        <div class="status" id="st-in">Pronto.</div>
       </div>
-      <div class="panel panel-side">
-        <h2>Elaborazione tecnica</h2>
-        <div class="trace-panel">
-          <div class="trace-panel-header">Ultimo turno <span id="trace-count-intake"></span></div>
-          <div class="trace-inner" id="trace-intake"></div>
-        </div>
-        <h2>Posta dal reparto (simulata)</h2>
-        <div class="inbox-section">
-          <div class="inbox-toolbar">
-            <span class="hint" style="margin:0">Pratica: <code id="inbox-ticket-label" style="font-size:0.8rem">—</code></span>
-            <button type="button" class="btn secondary" id="refresh-inbox" style="padding:0.4rem 0.75rem;font-size:0.8rem">Aggiorna</button>
+      <div class="col-side">
+        <h2>Traccia · posta simulata</h2>
+        <div class="trace" id="trace-in"></div>
+        <div class="api-outcome muted" id="in-api-outcome" aria-live="polite">
+          <div><strong>Esito API</strong> (unica fonte per ID pratica e reparto). Il testo nella chat può contenere numeri inventati dal modello.</div>
+          <div style="margin-top:0.35rem" id="in-api-outcome-body">Nessuna risposta ancora: invia un messaggio dalla tab Richiesta.</div>
+          <div class="row-actions">
+            <button type="button" class="btn" id="btn-to-operator" style="padding:0.35rem 0.65rem;font-size:0.78rem">Apri tab Dipendente e allinea elenco</button>
+            <button type="button" class="btn secondary" id="in-inbox-refresh" style="padding:0.35rem 0.65rem;font-size:0.78rem">Aggiorna mail simulate</button>
           </div>
-          <div class="inbox-list" id="inbox-list"></div>
         </div>
-        <div class="scroll scroll-muted" style="flex:0;padding:0 0.75rem 1rem">
-          <div class="side-card" style="margin:0">
-            <h3>Checklist</h3>
-            <p>Compila il <strong>modulo contatto</strong> sotto la chat (nome, cognome, email). L’agente usa questi dati per il ticket; in chat può chiedere solo eventuali conferme (es. autorizzazione), non di nuovo email o nome.</p>
-          </div>
+        <details id="in-debug-wrap" style="display:none;margin:0 1rem 0.75rem;font-size:0.72rem;color:var(--muted)">
+          <summary style="cursor:pointer;color:var(--accent);font-weight:600">Debug intake (server)</summary>
+          <pre id="in-debug-pre" style="white-space:pre-wrap;margin:0.4rem 0 0;max-height:16rem;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:0.45rem;background:#0a0e14"></pre>
+        </details>
+        <div class="pad" style="border-top:1px solid var(--border);font-size:0.78rem;color:var(--muted)">
+          <div id="inbox-list" style="max-height:12rem;overflow:auto"></div>
         </div>
       </div>
     </section>
 
-    <section id="view-assist" class="view" role="tabpanel" aria-labelledby="tab-assist" hidden>
-      <div class="panel panel-main" style="display:flex;flex-direction:column">
+    <!-- === DIPENDENTE (operatore) === -->
+    <section id="view-op" class="view" role="tabpanel" aria-labelledby="tab-op" aria-hidden="true">
+      <div class="col-main">
         <h2>Area operatore</h2>
-        <div class="scroll" style="flex:0 0 auto;padding-bottom:0.35rem">
-          <div class="panel-row">
+        <div class="op-banner" id="op-handoff-banner" role="status"></div>
+        <div class="pad">
+          <div class="row">
             <div class="field">
-              <label for="dept-assist">Reparto</label>
-              <select id="dept-assist" class="field-sm">
-                <option value="vendita">Vendita</option>
-                <option value="acquisto">Acquisto</option>
-                <option value="manutenzione">Manutenzione</option>
+              <label for="op-dept">Reparto</label>
+              <select id="op-dept">
+                <option value="vendita">vendita</option>
+                <option value="acquisto">acquisto</option>
+                <option value="manutenzione">manutenzione</option>
               </select>
             </div>
             <div class="field">
-              <label for="ticket-assist">Codice pratica</label>
-              <input class="field-sm" id="ticket-assist" placeholder="N. pratica (es. 4) dall’intake o dalla coda" autocomplete="off" />
-            </div>
-            <div class="field">
-              <label for="emp-assist">Operatore</label>
-              <select class="field-sm" id="emp-assist" title="Elenco dal database del reparto"></select>
+              <label for="op-emp">Operatore</label>
+              <select id="op-emp"><option value="">—</option></select>
             </div>
           </div>
-          <div class="callout" role="note">
-            Le pratiche da intake sono <strong>in attesa di accettazione</strong>: compaiono nell’elenco sotto finché qualcuno non prende in carico.
+          <p class="callout">Elenco pratiche: <code>GET /departments/{reparto}/pratiche</code> (tutti gli stati, con operatore assegnato). Coda globale ancora <code>GET /pratiche/pending</code>. Presa in carico: <code>POST …/tickets/{id}/accept</code>. Messaggio al richiedente (email simulata): <code>POST …/pratiche/{id}/mail-richiedente</code> oppure chat assistenza.</p>
+          <div class="row">
+            <button type="button" class="btn secondary" id="op-pending">Aggiorna elenco pratiche</button>
+            <button type="button" class="btn" id="op-accept">Prendi in carico</button>
           </div>
-          <div class="pending-toolbar">
-            <button type="button" class="btn secondary" id="load-pending">Aggiorna coda</button>
-            <button type="button" class="btn secondary" id="accept-ticket">Prendi in carico</button>
+          <div id="op-pending-global" style="margin:0 0 0.6rem;font-size:0.78rem;color:var(--muted);line-height:1.45"></div>
+          <div class="op-pr-wrap">
+            <div class="op-pr-scroll" id="op-pratiche-scroll">
+              <div class="op-pr-head"><span>ID</span><span>Stato</span><span>Titolo</span><span>Richiedente</span><span>Assegnato a</span></div>
+              <div id="op-pratiche-elenco"></div>
+            </div>
           </div>
-          <div class="pending-list" id="pending-box"></div>
-        </div>
-        <h2>Chat operatore</h2>
-        <div class="chat-wrap" style="flex:1;min-height:180px">
-          <div class="chat-empty hidden" id="empty-assist" aria-hidden="true">
-            <div class="chat-empty-icon" aria-hidden="true">◇</div>
-            <p>Chat non attiva</p>
-            <p class="chat-empty-hint">Scegli reparto, codice pratica e operatore, poi prendi in carico la pratica per chattare con l’assistente.</p>
+          <div class="op-ticket-row">
+            <label for="op-ticket">Pratica selezionata</label>
+            <select id="op-ticket"><option value="">— Seleziona dall’elenco —</option></select>
           </div>
-          <div class="scroll chat-scroll" id="chat-assist" style="flex:1"></div>
-        </div>
-        <div class="status-strip" id="status-assist" role="status">Compila i campi sopra e prendi in carico.</div>
-        <div class="composer">
-          <textarea id="input-assist" placeholder="Scrivi all’assistente dopo la presa in carico…" rows="2" aria-label="Messaggio assistenza"></textarea>
-          <div class="composer-actions">
-            <button type="button" class="btn" id="send-assist">Invia</button>
-            <button type="button" class="btn secondary" id="new-assist">Nuova conversazione</button>
+          <div class="op-mail-panel" id="op-mail-panel">
+            <h3>Messaggio al richiedente</h3>
+            <p id="op-mail-hint" style="margin:0 0 0.5rem;color:var(--muted);font-size:0.78rem">Seleziona una pratica in lavorazione a tuo carico per abilitare l’invio.</p>
+            <div class="field"><label for="op-mail-subject">Oggetto</label><input id="op-mail-subject" type="text" maxlength="240" placeholder="Oggetto email…" /></div>
+            <div class="field"><label for="op-mail-body">Testo</label><textarea id="op-mail-body" placeholder="Testo per il richiedente (tab Richiesta). Invio = invia · Shift+Invio = a capo…" style="min-height:72px;max-width:none"></textarea></div>
+            <button type="button" class="btn" id="op-mail-send" disabled>Invia al richiedente</button>
           </div>
         </div>
+        <div class="chat" id="chat-op"></div>
+        <div class="pad" style="padding-top:0">
+          <div class="row" style="align-items:center">
+            <textarea id="op-msg" placeholder="Messaggio all’assistente (dopo presa in carico). Invio: Invio (Shift+Invio = a capo)…" style="flex:1;max-width:none"></textarea>
+            <button type="button" class="btn" id="op-send">Invia</button>
+            <button type="button" class="btn secondary" id="op-new-thread">Nuovo thread chat</button>
+          </div>
+        </div>
+        <div class="status" id="st-op">Scegli reparto, aggiorna elenco pratiche, operatore e pratica.</div>
       </div>
-      <div class="panel panel-side">
-        <h2>Elaborazione tecnica</h2>
-        <div class="trace-panel">
-          <div class="trace-panel-header">Ultimo turno <span id="trace-count-assist"></span></div>
-          <div class="trace-inner" id="trace-assist"></div>
-        </div>
-        <div class="scroll scroll-muted" style="flex:1;min-height:0;padding:0.5rem 0.75rem 1rem">
-          <div class="side-card" style="margin:0">
-            <h3>Tool dipendente</h3>
-            <p>Chiedi riepilogo ticket, clienti, aggiornamento stato (<code>update_ticket_status</code>). Per contattare il richiedente: chiedi di inviare una <strong>mail simulata</strong> — registrata e visibile nel tab Richiesta.</p>
-          </div>
-        </div>
+      <div class="col-side">
+        <h2>Traccia assistenza</h2>
+        <div class="trace" id="trace-op"></div>
       </div>
     </section>
   </main>
 
   <script>
-    const LS_INTAKE = "poc_intake_thread";
-    const LS_LAST_TICKET = "poc_last_ticket_id";
-    const LS_CONTACT_PREFIX = "poc_intake_contact_";
-    const LS_CONTACT_DRAFT = "poc_intake_contact_draft";
-    const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+(function () {
+  "use strict";
 
-    function contactKeyForTid(tid) {
-      return tid ? LS_CONTACT_PREFIX + tid : LS_CONTACT_DRAFT;
-    }
-    function readContactFields() {
-      return {
-        contact_first_name: document.getElementById("contact-first").value.trim(),
-        contact_last_name: document.getElementById("contact-last").value.trim(),
-        contact_email: document.getElementById("contact-email").value.trim(),
-      };
-    }
-    function applyContactFields(o) {
-      const f = document.getElementById("contact-first");
-      const l = document.getElementById("contact-last");
-      const e = document.getElementById("contact-email");
-      if (!f || !l || !e) return;
-      if (!o) { f.value = ""; l.value = ""; e.value = ""; return; }
-      f.value = o.contact_first_name || "";
-      l.value = o.contact_last_name || "";
-      e.value = o.contact_email || "";
-    }
-    function persistContactDraftOrThread() {
-      const tid = localStorage.getItem(LS_INTAKE);
-      try {
-        localStorage.setItem(contactKeyForTid(tid || null), JSON.stringify(readContactFields()));
-      } catch (_) { /* ignore quota */ }
-    }
-    function loadContactForCurrentSession() {
-      const tid = localStorage.getItem(LS_INTAKE);
-      const raw = localStorage.getItem(contactKeyForTid(tid || null));
-      if (!raw) return;
-      try { applyContactFields(JSON.parse(raw)); } catch (_) {}
-    }
-    function saveContactAfterSuccess(threadId) {
-      if (!threadId) return;
-      localStorage.setItem(contactKeyForTid(threadId), JSON.stringify(readContactFields()));
-      localStorage.removeItem(LS_CONTACT_DRAFT);
-    }
-    const emptyIntake = document.getElementById("empty-intake");
-    const emptyAssist = document.getElementById("empty-assist");
+  /* --- API (allineata a app/main.py) --- */
+  const LS_IN_THREAD = "helper_in_thread";
+  const LS_LAST_TICKET = "helper_last_ticket";
+  const LS_LAST_DEPT = "helper_last_dept";
+  const LS_CONTACT = "helper_contact_json";
+  /** Ultimo turno intake: snapshot da POST /intake/chat (passaggio verso operatore). */
+  const SS_INTAKE_HANDOFF = "helper_intake_handoff_v1";
+  const SS_LAST_INTAKE_TRACE = "helper_last_intake_trace_v1";
+  const SS_LAST_INTAKE_DEBUG = "helper_last_intake_debug_v1";
 
-    function lsAssistKey() {
-      return "poc_assist_" + document.getElementById("dept-assist").value + "_" +
-        document.getElementById("ticket-assist").value.trim() + "_" +
-        document.getElementById("emp-assist").value.trim();
+  function assistStorageKey(dept, ticketId, empId) {
+    return "helper_asst_" + dept + "_" + ticketId + "_" + empId;
+  }
+
+  async function apiFetch(method, url, jsonBody) {
+    const opts = { method, headers: {} };
+    if (jsonBody !== undefined) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(jsonBody);
     }
-
-    function syncIntakeEmpty() {
-      const chat = document.getElementById("chat-intake");
-      const show = chat.children.length === 0;
-      emptyIntake.classList.toggle("hidden", !show);
-      emptyIntake.setAttribute("aria-hidden", show ? "false" : "true");
+    const r = await fetch(url, opts);
+    const text = await r.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch (_) { data = { _raw: text }; }
+    if (!r.ok) {
+      const det = data.detail;
+      const msg = typeof det === "string" ? det : (Array.isArray(det) ? det.map(function (x) { return x.msg || JSON.stringify(x); }).join("; ") : JSON.stringify(data));
+      throw new Error(msg || ("HTTP " + r.status));
     }
+    return data;
+  }
 
-    function updateInboxTicketLabel() {
-      const tid = localStorage.getItem(LS_LAST_TICKET) || "";
-      const el = document.getElementById("inbox-ticket-label");
-      el.textContent = tid || "—";
-      if (tid) el.title = "Pratica #" + tid;
-      else el.removeAttribute("title");
-    }
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
 
-    async function loadSimulatedInbox() {
-      updateInboxTicketLabel();
-      const box = document.getElementById("inbox-list");
-      const tid = localStorage.getItem(LS_LAST_TICKET);
-      if (!tid) {
-        box.innerHTML = '<div class="inbox-item"><span class="hint">Compare dopo che apri un ticket dall’intake.</span></div>';
-        return;
-      }
-      const r = await fetch("/intake/simulated-mails?ticket_id=" + encodeURIComponent(tid));
-      const d = await r.json();
-      if (!r.ok) {
-        box.innerHTML = '<div class="inbox-item"><span class="hint">' + esc(typeof d.detail === "string" ? d.detail : JSON.stringify(d)) + "</span></div>";
-        return;
-      }
-      box.innerHTML = "";
-      const list = d.messages || [];
-      if (!list.length) {
-        box.innerHTML = '<div class="inbox-item"><span class="hint">Nessun messaggio dal reparto ancora. Quando il dipendente invia una mail simulata, apparirà qui.</span></div>';
-        return;
-      }
-      for (const m of list) {
-        const row = document.createElement("div");
-        row.className = "inbox-item";
-        row.innerHTML =
-          '<div class="inbox-meta">' + esc(d.department || "") + " · " + esc(m.created_at || "") + " · → " + esc(m.to_email || "") + "</div>" +
-          '<div class="inbox-subj">' + esc(m.subject || "(senza oggetto)") + "</div>" +
-          '<div class="inbox-body">' + esc(m.body || "") + "</div>";
-        box.appendChild(row);
-      }
-    }
+  function setTab(which) {
+    var vin = document.getElementById("view-in");
+    var vop = document.getElementById("view-op");
+    var tin = document.getElementById("tab-in");
+    var top = document.getElementById("tab-op");
+    var isIn = which === "in";
+    vin.classList.toggle("is-on", isIn);
+    vop.classList.toggle("is-on", !isIn);
+    vin.removeAttribute("hidden");
+    vop.removeAttribute("hidden");
+    vin.setAttribute("aria-hidden", isIn ? "false" : "true");
+    vop.setAttribute("aria-hidden", isIn ? "true" : "false");
+    tin.setAttribute("aria-selected", isIn);
+    top.setAttribute("aria-selected", !isIn);
+  }
 
-    function syncAssistEmpty() {
-      const chat = document.getElementById("chat-assist");
-      const ticketId = document.getElementById("ticket-assist").value.trim();
-      const empId = document.getElementById("emp-assist").value.trim();
-      const tid = localStorage.getItem(lsAssistKey());
-      const show = chat.children.length === 0 && (!tid || !ticketId || !empId);
-      emptyAssist.classList.toggle("hidden", !show);
-      emptyAssist.setAttribute("aria-hidden", show ? "false" : "true");
-    }
-
-    async function fillEmployeeDropdown(dept, opts) {
-      opts = opts || {};
-      const preserve = Object.prototype.hasOwnProperty.call(opts, "preserveId")
-        ? opts.preserveId
-        : document.getElementById("emp-assist").value;
-      const sel = document.getElementById("emp-assist");
-      const keep = preserve;
-      sel.innerHTML = '<option value="">— Seleziona operatore —</option>';
-      try {
-        const r = await fetch("/departments/" + encodeURIComponent(dept) + "/employees");
-        const d = await r.json();
-        if (!r.ok) {
-          throw new Error(typeof d.detail === "string" ? d.detail : JSON.stringify(d));
-        }
-        (d.employees || []).forEach((e) => {
-          const opt = document.createElement("option");
-          opt.value = e.id;
-          opt.textContent = e.name;
-          sel.appendChild(opt);
-        });
-      } catch (_err) {
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "Errore caricamento elenco";
-        sel.appendChild(opt);
-      }
-      if (keep && Array.from(sel.options).some((o) => o.value === keep)) {
-        sel.value = keep;
-      }
-    }
-
-    function wirePendingUseButtons(box) {
-      box.querySelectorAll(".use-ticket").forEach((b) => {
-        b.addEventListener("click", () => {
-          document.getElementById("ticket-assist").value = b.getAttribute("data-id");
-          loadAssistThread();
-        });
-      });
-    }
-
-    function renderPendingList(tickets) {
-      const box = document.getElementById("pending-box");
-      box.classList.remove("is-empty");
-      if (!tickets || !tickets.length) {
-        box.innerHTML = "";
-        box.classList.add("is-empty");
-        box.textContent = "Nessuna pratica in coda per questo reparto.";
-        return;
-      }
-      box.innerHTML = "";
-      tickets.forEach((t) => {
-        const row = document.createElement("div");
-        row.className = "pending-item";
-        row.innerHTML = "<span><code>" + esc(t.id) + "</code> — " + esc(t.title || "") + "</span>" +
-          "<button type='button' class='btn secondary use-ticket' data-id='" + esc(t.id) + "'>Usa</button>";
-        box.appendChild(row);
-      });
-      wirePendingUseButtons(box);
-    }
-
-    async function loadPendingTickets() {
-      const dept = document.getElementById("dept-assist").value;
-      const box = document.getElementById("pending-box");
-      box.classList.remove("is-empty");
-      box.innerHTML = "";
-      const r = await fetch("/departments/" + encodeURIComponent(dept) + "/tickets/pending");
-      const d = await r.json();
-      if (!r.ok) {
-        box.classList.add("is-empty");
-        box.textContent = typeof d.detail === "string" ? d.detail : JSON.stringify(d);
-        return;
-      }
-      renderPendingList(d.tickets || []);
-    }
-
-    function esc(s) {
-      const d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    /** FastAPI detail: stringa | array validazione | altro */
-    function formatApiError(d, status) {
-      const st = status != null ? String(status) : "";
-      if (d == null || typeof d !== "object") {
-        return st ? "Errore HTTP " + st : "Errore di rete o risposta non valida.";
-      }
-      const det = d.detail;
-      if (typeof det === "string" && det.trim()) return det;
-      if (Array.isArray(det) && det.length) {
-        const parts = det.map((x) => {
-          if (x && typeof x === "object" && "msg" in x) return String(x.msg);
-          try {
-            return JSON.stringify(x);
-          } catch {
-            return String(x);
-          }
-        });
-        const joined = parts.join(" · ");
-        return joined || (st ? "Errore HTTP " + st : "Errore sconosciuto.");
-      }
-      try {
-        const s = JSON.stringify(det != null && det !== "" ? det : d);
-        if (s && s !== "{}") return s;
-      } catch (_) { /* ignore */ }
-      return st ? "Errore HTTP " + st : "Errore sconosciuto.";
-    }
-
-    function setStatus(el, text, kind) {
-      el.textContent = text;
-      el.className = "status-strip" + (kind === "ok" ? " ok" : kind === "err" ? " err" : kind === "loading" ? " loading" : "");
-    }
-
-    function renderTrace(el, steps, countEl) {
-      el.innerHTML = "";
-      const n = steps && steps.length ? steps.length : 0;
-      if (countEl) countEl.textContent = n ? "(" + n + " passaggi)" : "";
-      if (!steps || !steps.length) {
-        el.innerHTML = '<p class="hint" style="margin:0;font-size:0.8rem;color:var(--muted)">Nessun passaggio per questo invio.</p>';
-        return;
-      }
-      for (const s of steps) {
-        const box = document.createElement("div");
-        const ui = s.ui || {};
-        const head = ui.title || (s.kind === "user" ? "Richiesta cliente" : s.kind === "assistant" ? "Assistente" : (s.tool_name ? "Gestionale · " + s.tool_name : "Gestionale"));
-        const summary = typeof ui.summary === "string" ? ui.summary : "";
-
-        if (s.kind === "user") {
-          box.className = "trace-step user";
-          const body = summary || s.content || "";
-          box.innerHTML = '<div class="head">' + esc(head) + '</div><div class="body">' + esc(body) + "</div>";
-        } else if (s.kind === "assistant") {
-          box.className = "trace-step assistant";
-          let inner = '<div class="head">' + esc(head) + '</div><div class="body">';
-          if (summary) inner += esc(summary);
-          else if (s.content) inner += esc(s.content);
-          if (s.tool_calls && s.tool_calls.length) {
-            inner += "<div style='margin-top:0.45rem;font-size:0.76rem;color:var(--muted)'>Operazioni sul gestionale</div>";
-            for (const tc of s.tool_calls) {
-              inner += "<details style='margin-top:0.35rem'><summary style=\"cursor:pointer;font-size:0.78rem\">Dettaglio · " + esc(tc.name || "?") + "</summary><pre class=\"args\">" + esc(JSON.stringify(tc.args || {}, null, 2)) + "</pre></details>";
-            }
-          }
-          const longText = (s.content || "").length > 500;
-          if (!s.tool_calls && longText && s.content && summary !== s.content) {
-            inner += "<details style='margin-top:0.35rem'><summary style=\"cursor:pointer;font-size:0.78rem\">Testo completo</summary><div style='margin-top:0.35rem'>" + esc(s.content) + "</div></details>";
-          }
-          inner += "</div>";
-          box.innerHTML = inner;
-        } else if (s.kind === "tool") {
-          box.className = "trace-step tool";
-          const bodyText = summary || (s.content || "");
-          let html = '<div class="head">' + esc(head) + '</div><div class="body">' + esc(bodyText) + "</div>";
-          if (ui.show_raw && s.content && summary && String(s.content).trim() !== String(summary).trim()) {
-            html += "<details style='margin:0.35rem 0.78rem 0.65rem'><summary style=\"cursor:pointer;font-size:0.76rem;color:var(--muted)\">Risposta grezza</summary><pre class=\"args\">" + esc(s.content) + "</pre></details>";
-          }
-          box.innerHTML = html;
-        }
-        el.appendChild(box);
-      }
-    }
-
-    function appendChat(el, role, text) {
-      const div = document.createElement("div");
-      div.className = "msg " + (role === "user" ? "user" : "bot");
-      div.innerHTML = '<div class="role">' + (role === "user" ? "Tu" : "Assistente") + "</div><div class='msg-body'>" + esc(text).replace(/\n/g, "<br/>") + "</div>";
-      el.appendChild(div);
-      el.scrollTop = el.scrollHeight;
-      if (el.id === "chat-intake") syncIntakeEmpty();
-      if (el.id === "chat-assist") syncAssistEmpty();
-    }
-
-    function fillChatFromTranscript(el, messages) {
-      el.innerHTML = "";
-      for (const m of messages || []) {
-        if (m.role === "user") appendChat(el, "user", m.content || "");
-        else if (m.role === "assistant") appendChat(el, "bot", m.content || "");
-      }
-      if (el.id === "chat-intake") syncIntakeEmpty();
-      if (el.id === "chat-assist") syncAssistEmpty();
-    }
-
-    document.querySelectorAll(".tabs button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tabs button").forEach((b) => {
-          b.classList.remove("active");
-          b.setAttribute("aria-selected", "false");
-        });
-        btn.classList.add("active");
-        btn.setAttribute("aria-selected", "true");
-        const t = btn.getAttribute("data-tab");
-        const vIn = document.getElementById("view-intake");
-        const vAs = document.getElementById("view-assist");
-        vIn.classList.toggle("active", t === "intake");
-        vAs.classList.toggle("active", t === "assist");
-        vIn.hidden = t !== "intake";
-        vAs.hidden = t !== "assist";
-        if (t === "assist") {
-          (async () => {
-            await fillEmployeeDropdown(document.getElementById("dept-assist").value);
-            const pref = sessionStorage.getItem("poc_prefetch_pending");
-            if (pref && document.getElementById("dept-assist").value === pref) {
-              sessionStorage.removeItem("poc_prefetch_pending");
-              await loadPendingTickets();
-            }
-          })();
-        } else if (t === "intake") {
-          loadSimulatedInbox();
-        }
-        syncAssistEmpty();
-      });
+  document.getElementById("tab-in").addEventListener("click", function () { setTab("in"); });
+  document.getElementById("tab-op").addEventListener("click", function () {
+    setTab("op");
+    opOnShow().catch(function (e) {
+      setSt("st-op", "Errore caricamento: " + (e && e.message ? e.message : String(e)), "err");
     });
+  });
 
-    const chatIn = document.getElementById("chat-intake");
-    const traceIn = document.getElementById("trace-intake");
-    const countIn = document.getElementById("trace-count-intake");
-    const stIn = document.getElementById("status-intake");
-    const btnSendIn = document.getElementById("send-intake");
-
-    async function loadIntakeThread() {
-      const tid = localStorage.getItem(LS_INTAKE);
-      traceIn.innerHTML = "";
-      countIn.textContent = "";
-      if (!tid) {
-        chatIn.innerHTML = "";
-        syncIntakeEmpty();
-        setStatus(stIn, "Nessuna conversazione salvata. Scrivi per iniziare.", "");
-        return;
-      }
-      const r = await fetch("/intake/thread?thread_id=" + encodeURIComponent(tid));
-      const d = await r.json();
-      if (!r.ok) { setStatus(stIn, JSON.stringify(d), "err"); return; }
-      fillChatFromTranscript(chatIn, d.messages);
-      setStatus(stIn, "Sessione " + tid.slice(0, 8) + "… · Dettaglio tecnico nel pannello a destra.", "ok");
+  document.getElementById("btn-to-operator").addEventListener("click", async function () {
+    setTab("op");
+    try {
+      await syncOperatorMaskFromHandoff();
+      await opLoadThread();
+      setSt("st-op", "Maschera allineata all’ultimo esito API (Richiesta).", "ok");
+    } catch (e) {
+      setSt("st-op", (e && e.message) ? e.message : String(e), "err");
     }
+  });
 
-    document.getElementById("new-intake").addEventListener("click", () => {
-      const oldTid = localStorage.getItem(LS_INTAKE);
-      if (oldTid) localStorage.removeItem(contactKeyForTid(oldTid));
-      localStorage.removeItem(LS_CONTACT_DRAFT);
-      localStorage.removeItem(LS_INTAKE);
-      localStorage.removeItem(LS_LAST_TICKET);
-      applyContactFields(null);
-      chatIn.innerHTML = "";
-      syncIntakeEmpty();
-      renderTrace(traceIn, [], countIn);
-      setStatus(stIn, "Conversazione azzerata.", "");
-      loadSimulatedInbox();
+  /* --- Intake --- */
+  function readContact() {
+    return {
+      contact_first_name: document.getElementById("in-fn").value.trim(),
+      contact_last_name: document.getElementById("in-ln").value.trim(),
+      contact_email: document.getElementById("in-em").value.trim()
+    };
+  }
+
+  function persistContact() {
+    try { localStorage.setItem(LS_CONTACT, JSON.stringify(readContact())); } catch (e) {}
+  }
+
+  function loadContact() {
+    try {
+      var j = JSON.parse(localStorage.getItem(LS_CONTACT) || "{}");
+      if (j.contact_first_name) document.getElementById("in-fn").value = j.contact_first_name;
+      if (j.contact_last_name) document.getElementById("in-ln").value = j.contact_last_name;
+      if (j.contact_email) document.getElementById("in-em").value = j.contact_email;
+    } catch (e) {}
+  }
+
+  ["in-fn", "in-ln", "in-em"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("blur", persistContact);
+  });
+
+  function bubble(container, who, text, isUser) {
+    var d = document.createElement("div");
+    d.className = "bubble " + (isUser ? "u" : "a");
+    d.innerHTML = "<div class='who'>" + esc(who) + "</div><div>" + esc(text).replace(/\n/g, "<br/>") + "</div>";
+    container.appendChild(d);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function traceRender(el, steps) {
+    el.innerHTML = "";
+    if (!steps || !steps.length) {
+      el.innerHTML = "<p style='color:var(--muted);margin:0'>Nessun passaggio.</p>";
+      return;
+    }
+    steps.forEach(function (s) {
+      var pre = document.createElement("pre");
+      pre.style.whiteSpace = "pre-wrap";
+      pre.style.margin = "0 0 0.5rem";
+      pre.style.fontSize = "0.72rem";
+      pre.style.color = "var(--muted)";
+      var title = (s.ui && s.ui.title) ? s.ui.title : s.kind;
+      var sum = (s.ui && s.ui.summary) ? s.ui.summary : (s.content || "");
+      pre.textContent = title + "\n" + sum;
+      el.appendChild(pre);
     });
+  }
 
-    ["contact-first", "contact-last", "contact-email"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener("blur", persistContactDraftOrThread);
-    });
+  function setSt(id, text, cls) {
+    var e = document.getElementById(id);
+    e.textContent = text;
+    e.className = "status" + (cls ? " " + cls : "");
+  }
 
-    document.getElementById("refresh-inbox").addEventListener("click", () => {
-      loadSimulatedInbox();
-    });
+  function _validDept(d) {
+    return d && ["vendita", "acquisto", "manutenzione"].indexOf(d) >= 0;
+  }
 
-    document.getElementById("send-intake").addEventListener("click", async () => {
-      const msg = document.getElementById("input-intake").value.trim();
-      if (!msg) return;
-      const c = readContactFields();
-      if (!c.contact_first_name || !c.contact_last_name || !c.contact_email) {
-        setStatus(stIn, "Compila nome, cognome e email nel modulo contatto.", "err");
-        return;
-      }
-      if (!EMAIL_OK.test(c.contact_email)) {
-        setStatus(stIn, "Email: inserisci un indirizzo con formato valido (es. nome@dominio.it).", "err");
-        return;
-      }
-      const tid = localStorage.getItem(LS_INTAKE);
-      setStatus(stIn, "Elaborazione in corso…", "loading");
-      btnSendIn.disabled = true;
-      appendChat(chatIn, "user", msg);
-      document.getElementById("input-intake").value = "";
+  function snapshotFromIntakeResponse(d) {
+    var tid = d.ticket_id != null && d.ticket_id !== "" ? String(d.ticket_id).trim() : null;
+    var dept = d.routed_department != null && d.routed_department !== "" ? String(d.routed_department).trim() : null;
+    return {
+      thread_id: d.thread_id || null,
+      ticket_id: tid && /^\d+$/.test(tid) ? tid : null,
+      routed_department: _validDept(dept) ? dept : null,
+      at: new Date().toISOString()
+    };
+  }
+
+  function saveIntakeHandoff(snap) {
+    try { sessionStorage.setItem(SS_INTAKE_HANDOFF, JSON.stringify(snap)); } catch (e) {}
+    if (snap.ticket_id) {
       try {
-        const payload = { message: msg, ...c };
-        if (tid) payload.thread_id = tid;
-        const r = await fetch("/intake/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          setStatus(stIn, formatApiError(d, r.status), "err");
-          return;
-        }
-        if (d.thread_id) {
-          localStorage.setItem(LS_INTAKE, d.thread_id);
-          saveContactAfterSuccess(d.thread_id);
-        }
-        appendChat(chatIn, "bot", d.reply || "");
-        renderTrace(traceIn, d.trace || [], countIn);
-        if (d.ticket_id) {
-          localStorage.setItem(LS_LAST_TICKET, d.ticket_id);
-          loadSimulatedInbox();
-        }
-        const routed = await applyIntakeRoutingToAssist(d);
-        const hasTicket = routed || !!d.ticket_id;
-        setStatus(
-          stIn,
-          hasTicket
-            ? (routed
-                ? "Inoltrato: reparto e codice pratica salvati per il tab Dipendente (puoi restare qui). La pratica è in coda finché non viene presa in carico. Aprendo Dipendente, la coda si può aggiornare da sola."
-                : "Inoltrato: usa il tab Dipendente con codice e reparto dalla risposta.")
-            : "Sessione " + (d.thread_id || "").slice(0, 8) + "…",
-          "ok"
+        localStorage.setItem(LS_LAST_TICKET, snap.ticket_id);
+        if (snap.routed_department) localStorage.setItem(LS_LAST_DEPT, snap.routed_department);
+      } catch (e2) {}
+    }
+  }
+
+  function loadIntakeHandoff() {
+    try {
+      var raw = sessionStorage.getItem(SS_INTAKE_HANDOFF);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** Dopo refresh pagina lo snapshot in session è vuoto: ricostruisci da localStorage se possibile. */
+  function restoreHandoffSnapshotIfNeeded() {
+    if (loadIntakeHandoff()) return;
+    var t = localStorage.getItem(LS_LAST_TICKET);
+    var d = localStorage.getItem(LS_LAST_DEPT);
+    if (t && /^\d+$/.test(t)) {
+      try {
+        sessionStorage.setItem(
+          SS_INTAKE_HANDOFF,
+          JSON.stringify({
+            thread_id: localStorage.getItem(LS_IN_THREAD),
+            ticket_id: t,
+            routed_department: _validDept(d) ? d : null,
+            at: new Date().toISOString()
+          })
         );
-      } finally {
-        btnSendIn.disabled = false;
-      }
-    });
-
-    const chatAs = document.getElementById("chat-assist");
-    const traceAs = document.getElementById("trace-assist");
-    const countAs = document.getElementById("trace-count-assist");
-    const stAs = document.getElementById("status-assist");
-    const btnSendAs = document.getElementById("send-assist");
-
-    async function applyIntakeRoutingToAssist(d) {
-      if (!d || !d.routed_department || !d.ticket_id) return false;
-      localStorage.setItem(LS_LAST_TICKET, d.ticket_id);
-      updateInboxTicketLabel();
-      document.getElementById("dept-assist").value = d.routed_department;
-      document.getElementById("ticket-assist").value = d.ticket_id;
-      sessionStorage.setItem("poc_prefetch_pending", d.routed_department);
-      await fillEmployeeDropdown(d.routed_department, { preserveId: "" });
-      loadAssistThread();
-      return true;
+      } catch (e) {}
     }
+  }
 
-    async function loadAssistThread() {
-      const dept = document.getElementById("dept-assist").value;
-      const ticketId = document.getElementById("ticket-assist").value.trim();
-      const empId = document.getElementById("emp-assist").value.trim();
-      const tid = localStorage.getItem(lsAssistKey());
-      renderTrace(traceAs, [], countAs);
-      if (!tid || !ticketId || !empId) {
-        chatAs.innerHTML = "";
-        syncAssistEmpty();
-        setStatus(
-          stAs,
-          !ticketId
-            ? "Inserisci il codice pratica e scegli l’operatore."
-            : !empId
-              ? "Scegli l’operatore dal menu."
-              : "Dopo la presa in carico, invia un messaggio per iniziare la chat con l’assistente.",
-          ""
-        );
-        return;
-      }
-      const url = "/assist/thread?department=" + encodeURIComponent(dept) + "&ticket_id=" + encodeURIComponent(ticketId) + "&employee_id=" + encodeURIComponent(empId) + "&thread_id=" + encodeURIComponent(tid);
-      const r = await fetch(url);
-      const d = await r.json();
-      if (!r.ok) { setStatus(stAs, JSON.stringify(d), "err"); syncAssistEmpty(); return; }
-      fillChatFromTranscript(chatAs, d.messages);
-      setStatus(stAs, "Cronologia caricata.", "ok");
-      syncAssistEmpty();
+  /**
+   * Dopo reload (browser o uvicorn): se manca il reparto, lo chiede al server;
+   * così Esito API / banner / coda restano allineati ai ticket reali nel DB.
+   */
+  async function reconcileHandoffWithServer() {
+    var snap = loadIntakeHandoff();
+    var tid = (snap && snap.ticket_id) || localStorage.getItem(LS_LAST_TICKET);
+    if (!tid || !/^\d+$/.test(String(tid))) return;
+    var deptOk = snap && _validDept(snap.routed_department);
+    if (deptOk) return;
+    try {
+      var loc = await apiFetch("GET", "/tickets/" + encodeURIComponent(tid) + "/department");
+      if (!loc || !_validDept(loc.department)) return;
+      var merged = snap
+        ? Object.assign({}, snap, { routed_department: loc.department, ticket_id: String(tid) })
+        : {
+            thread_id: localStorage.getItem(LS_IN_THREAD),
+            ticket_id: String(tid),
+            routed_department: loc.department,
+            at: new Date().toISOString()
+          };
+      saveIntakeHandoff(merged);
+      try {
+        localStorage.setItem(LS_LAST_DEPT, loc.department);
+      } catch (e) {}
+    } catch (e) {}
+  }
+
+  function renderIntakeOutcomePanel() {
+    var wrap = document.getElementById("in-api-outcome");
+    var body = document.getElementById("in-api-outcome-body");
+    var snap = loadIntakeHandoff();
+    if (!snap || !snap.at) {
+      wrap.className = "api-outcome muted";
+      body.innerHTML = "Nessun dato ancora: invia un messaggio dalla tab Richiesta.";
+      return;
     }
+    if (snap.ticket_id && snap.routed_department) {
+      wrap.className = "api-outcome ok";
+      body.innerHTML =
+        "Pratica registrata: <strong>#" + esc(snap.ticket_id) + "</strong> · reparto <strong>" + esc(snap.routed_department) + "</strong>" +
+        (snap.thread_id ? "<br/><span style='color:var(--muted);font-size:0.72rem'>thread " + esc(snap.thread_id.slice(0, 8)) + "…</span>" : "");
+      return;
+    }
+    if (snap.ticket_id) {
+      wrap.className = "api-outcome ok";
+      body.innerHTML = "Pratica <strong>#" + esc(snap.ticket_id) + "</strong> (reparto da confermare con «Apri tab Dipendente…»).";
+      return;
+    }
+    wrap.className = "api-outcome warn";
+    body.innerHTML =
+      "<strong>Nessuna pratica aperta</strong> dall’API in questo turno. " +
+      "Ignora eventuali «numeri pratica» scritti dall’assistente nella chat: non sono validi finché non compaiono qui.";
+  }
 
-    document.getElementById("load-pending").addEventListener("click", () => {
-      loadPendingTickets();
-    });
+  function updateOperatorHandoffBanner() {
+    var el = document.getElementById("op-handoff-banner");
+    var snap = loadIntakeHandoff();
+    if (snap && snap.ticket_id && snap.routed_department) {
+      el.className = "op-banner is-on";
+      el.innerHTML =
+        "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> · <strong>" + esc(snap.routed_department) +
+        "</strong> — usa <strong>Apri tab Dipendente e allinea elenco</strong> dalla Richiesta oppure <strong>Aggiorna elenco pratiche</strong> qui.";
+      return;
+    }
+    if (snap && snap.ticket_id) {
+      el.className = "op-banner is-on";
+      el.innerHTML = "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> (reparto: allinea con Aggiorna elenco o dalla Richiesta).";
+      return;
+    }
+    el.className = "op-banner";
+    el.innerHTML = "";
+  }
 
-    document.getElementById("accept-ticket").addEventListener("click", async () => {
-      const dept = document.getElementById("dept-assist").value;
-      const ticketId = document.getElementById("ticket-assist").value.trim();
-      const empId = document.getElementById("emp-assist").value.trim();
-      if (!ticketId || !empId) {
-        setStatus(stAs, "Servono codice pratica e operatore selezionato.", "err");
-        return;
+  /**
+   * Sincronizza reparto, coda e menu pratica dal sessionStorage (e da GET /tickets/{id}/department se serve).
+   */
+  async function syncOperatorMaskFromHandoff() {
+    var snap = loadIntakeHandoff();
+    var dept = snap && snap.routed_department;
+    var tid = snap && snap.ticket_id;
+    if (tid && !dept) {
+      try {
+        var loc = await apiFetch("GET", "/tickets/" + encodeURIComponent(tid) + "/department");
+        if (loc && _validDept(loc.department)) dept = loc.department;
+      } catch (e) {}
+    }
+    if (_validDept(dept)) {
+      document.getElementById("op-dept").value = dept;
+      try { localStorage.setItem(LS_LAST_DEPT, dept); } catch (e) {}
+    }
+    await loadEmployees();
+    document.getElementById("op-ticket").value = "";
+    var n = await loadPraticheElenco();
+    if (tid) {
+      var sel = document.getElementById("op-ticket");
+      if (!Array.from(sel.options).some(function (o) { return o.value === tid; })) {
+        var o = document.createElement("option");
+        o.value = tid;
+        o.textContent = tid + " — (da intake, aggiorna elenco se manca)";
+        sel.appendChild(o);
       }
-      const r = await fetch("/departments/" + encodeURIComponent(dept) + "/tickets/" + encodeURIComponent(ticketId) + "/accept", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ employee_id: empId }),
+      sel.value = tid;
+      opHighlightRow(tid);
+      updateOpMailPanel();
+    }
+    updateOperatorHandoffBanner();
+    return n;
+  }
+
+  async function loadInThread() {
+    var tid = localStorage.getItem(LS_IN_THREAD);
+    var chat = document.getElementById("chat-in");
+    chat.innerHTML = "";
+    if (!tid) {
+      setSt("st-in", "Nessun thread salvato.", "");
+      return;
+    }
+    try {
+      var d = await apiFetch("GET", "/intake/thread?thread_id=" + encodeURIComponent(tid));
+      (d.messages || []).forEach(function (m) {
+        if (m.role === "user") bubble(chat, "Tu", m.content, true);
+        else if (m.role === "assistant") bubble(chat, "Assistente", m.content, false);
       });
-      const d = await r.json().catch(() => ({}));
-      if (r.ok) {
-        setStatus(stAs, "Presa in carico riuscita. Puoi usare la chat qui sotto.", "ok");
-        await loadPendingTickets();
+      setSt("st-in", "Thread " + tid.slice(0, 8) + "…", "ok");
+    } catch (err) {
+      setSt("st-in", String(err.message), "err");
+    }
+  }
+
+  document.getElementById("in-send").addEventListener("click", async function () {
+    var c = readContact();
+    if (!c.contact_first_name || !c.contact_last_name || !c.contact_email) {
+      setSt("st-in", "Compilare nome, cognome e email.", "err");
+      return;
+    }
+    var msg = document.getElementById("in-msg").value.trim();
+    if (!msg) return;
+    var tid = localStorage.getItem(LS_IN_THREAD);
+    /** @type {Record<string, string>} */
+    var body = Object.assign({ message: msg }, c);
+    if (tid) body.thread_id = tid;
+
+    setSt("st-in", "Elaborazione…", "load");
+    document.getElementById("in-send").disabled = true;
+    var chat = document.getElementById("chat-in");
+    bubble(chat, "Tu", msg, true);
+    document.getElementById("in-msg").value = "";
+
+    try {
+      var d = await apiFetch("POST", "/intake/chat", body);
+      localStorage.setItem(LS_IN_THREAD, d.thread_id);
+      var snap = snapshotFromIntakeResponse(d);
+      saveIntakeHandoff(snap);
+      renderIntakeOutcomePanel();
+      updateOperatorHandoffBanner();
+      var dbgW = document.getElementById("in-debug-wrap");
+      var dbgP = document.getElementById("in-debug-pre");
+      if (d.debug && typeof d.debug === "object") {
+        dbgW.style.display = "block";
+        dbgP.textContent = JSON.stringify(d.debug, null, 2);
+        try {
+          sessionStorage.setItem(SS_LAST_INTAKE_DEBUG, JSON.stringify(d.debug));
+        } catch (e2) {}
       } else {
-        setStatus(stAs, typeof d.detail === "string" ? d.detail : JSON.stringify(d.detail || d), "err");
+        dbgW.style.display = "none";
+        dbgP.textContent = "";
+        try {
+          sessionStorage.removeItem(SS_LAST_INTAKE_DEBUG);
+        } catch (e3) {}
       }
-    });
+      try {
+        sessionStorage.setItem(SS_LAST_INTAKE_TRACE, JSON.stringify(d.trace || []));
+      } catch (e4) {}
+      bubble(chat, "Assistente", d.reply || "", false);
+      traceRender(document.getElementById("trace-in"), d.trace);
+      setSt(
+        "st-in",
+        snap.ticket_id
+          ? ("API: pratica #" + snap.ticket_id + (snap.routed_department ? " · " + snap.routed_department : ""))
+          : "API: nessuna nuova pratica in questo turno (vedi pannello «Esito API»).",
+        snap.ticket_id ? "ok" : ""
+      );
+      await refreshInbox();
+    } catch (err) {
+      setSt("st-in", err.message, "err");
+    } finally {
+      document.getElementById("in-send").disabled = false;
+    }
+  });
 
-    document.getElementById("new-assist").addEventListener("click", () => {
-      localStorage.removeItem(lsAssistKey());
-      document.getElementById("emp-assist").value = "";
-      chatAs.innerHTML = "";
-      syncAssistEmpty();
-      renderTrace(traceAs, [], countAs);
-      setStatus(stAs, "Nuova sessione chat (stessi ticket e operatore → nuovo thread).", "");
-    });
+  document.getElementById("in-msg").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById("in-send").click();
+    }
+  });
 
-    document.getElementById("send-assist").addEventListener("click", async () => {
-      const msg = document.getElementById("input-assist").value.trim();
-      if (!msg) return;
-      const dept = document.getElementById("dept-assist").value;
-      const ticketId = document.getElementById("ticket-assist").value.trim();
-      const empId = document.getElementById("emp-assist").value.trim();
-      if (!ticketId || !empId) {
-        setStatus(stAs, "Compila codice pratica e operatore prima di inviare.", "err");
+  document.getElementById("in-new").addEventListener("click", function () {
+    localStorage.removeItem(LS_IN_THREAD);
+    localStorage.removeItem(LS_LAST_TICKET);
+    localStorage.removeItem(LS_LAST_DEPT);
+    try {
+      sessionStorage.removeItem(SS_INTAKE_HANDOFF);
+      sessionStorage.removeItem(SS_LAST_INTAKE_TRACE);
+      sessionStorage.removeItem(SS_LAST_INTAKE_DEBUG);
+    } catch (e) {}
+    document.getElementById("chat-in").innerHTML = "";
+    document.getElementById("trace-in").innerHTML = "";
+    document.getElementById("inbox-list").innerHTML = "";
+    renderIntakeOutcomePanel();
+    updateOperatorHandoffBanner();
+    setSt("st-in", "Nuova sessione.", "");
+  });
+
+  async function refreshInbox() {
+    var tid = localStorage.getItem(LS_LAST_TICKET);
+    var box = document.getElementById("inbox-list");
+    if (!tid) {
+      box.innerHTML = "<span style='color:var(--muted)'>Nessun ticket_id salvato.</span>";
+      return;
+    }
+    try {
+      var d = await apiFetch("GET", "/intake/simulated-mails?ticket_id=" + encodeURIComponent(tid));
+      if (!(d.messages || []).length) {
+        box.innerHTML = "<span style='color:var(--muted)'>Nessuna mail simulata.</span>";
         return;
       }
-      const tid = localStorage.getItem(lsAssistKey());
-      setStatus(stAs, "Elaborazione…", "loading");
-      btnSendAs.disabled = true;
-      appendChat(chatAs, "user", msg);
-      document.getElementById("input-assist").value = "";
-      try {
-        const payload = { department: dept, ticket_id: ticketId, employee_id: empId, message: msg };
-        if (tid) payload.thread_id = tid;
-        const r = await fetch("/assist/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          setStatus(stAs, typeof d.detail === "string" ? d.detail : JSON.stringify(d.detail || d), "err");
-          return;
+      box.innerHTML = (d.messages || []).map(function (m) {
+        return "<div style='margin-bottom:0.35rem;border-left:2px solid var(--border);padding-left:0.35rem'><strong>" + esc(m.subject) + "</strong><br/>" + esc(m.body || "") + "</div>";
+      }).join("");
+    } catch (e) {
+      box.innerHTML = "<span style='color:var(--err)'>" + esc(e.message) + "</span>";
+    }
+  }
+  document.getElementById("in-inbox-refresh").addEventListener("click", refreshInbox);
+
+  /* --- Operatore --- */
+  var __opPraticheList = [];
+
+  function statusLabelIt(st) {
+    var m = {
+      pending_acceptance: "In coda",
+      in_progress: "In lavorazione",
+      open: "Aperto",
+      resolved: "Risolto"
+    };
+    return m[st] || String(st || "—");
+  }
+
+  function opTicketSelectFill(tickets, preferred) {
+    var sel = document.getElementById("op-ticket");
+    var keep = preferred != null ? String(preferred) : sel.value;
+    sel.innerHTML = "<option value=''>— Seleziona —</option>";
+    (tickets || []).forEach(function (t) {
+      var o = document.createElement("option");
+      o.value = String(t.id);
+      o.textContent = String(t.id) + " · " + statusLabelIt(t.status) + " — " + (t.title || "").slice(0, 52)
+        + (t.opened_at ? " · " + String(t.opened_at).slice(0, 16) : "");
+      sel.appendChild(o);
+    });
+    if (keep && Array.from(sel.options).some(function (o) { return o.value === keep; })) sel.value = keep;
+    else {
+      var last = localStorage.getItem(LS_LAST_TICKET);
+      if (last && Array.from(sel.options).some(function (o) { return o.value === last; })) sel.value = last;
+    }
+  }
+
+  async function loadEmployees() {
+    var dept = document.getElementById("op-dept").value;
+    var sel = document.getElementById("op-emp");
+    var prev = sel.value;
+    sel.innerHTML = "<option value=''>— Seleziona operatore —</option>";
+    try {
+      var d = await apiFetch("GET", "/departments/" + encodeURIComponent(dept) + "/employees");
+      (d.employees || []).forEach(function (e) {
+        var o = document.createElement("option");
+        o.value = e.id;
+        o.textContent = e.name;
+        sel.appendChild(o);
+      });
+      if (prev && Array.from(sel.options).some(function (o) { return o.value === prev; })) sel.value = prev;
+    } catch (err) {
+      setSt("st-op", err.message, "err");
+    }
+  }
+
+  function renderGlobalPendingHint(globalPayload, deptLabel, localCount, fetchError) {
+    var el = document.getElementById("op-pending-global");
+    if (!el) return;
+    if (fetchError) {
+      el.textContent = fetchError;
+      return;
+    }
+    var tickets = (globalPayload && globalPayload.tickets) ? globalPayload.tickets : [];
+    var total = (globalPayload && typeof globalPayload.total === "number")
+      ? globalPayload.total
+      : tickets.length;
+    var counts = { vendita: 0, acquisto: 0, manutenzione: 0 };
+    tickets.forEach(function (t) {
+      var d = t.department;
+      if (d && Object.prototype.hasOwnProperty.call(counts, d)) counts[d]++;
+    });
+    if (total === 0) {
+      el.innerHTML =
+        "<strong>Registry centrale (<code>GET /pratiche/pending</code>):</strong> nessuna pratica in attesa in <em>nessun</em> reparto. " +
+        "Se in Richiesta l’«Esito API» non mostra un ID, l’intake non ha eseguito lo strumento di apertura pratica: " +
+        "<strong>non</strong> è un errore di passaggio verso pending — la riga non esiste nel DB.";
+      return;
+    }
+    var summary = "vendita " + counts.vendita + ", acquisto " + counts.acquisto + ", manutenzione " + counts.manutenzione;
+    el.innerHTML =
+      "<strong>Registry centrale:</strong> " + total + " in coda (" + summary + "). " +
+      "Reparto «<strong>" + esc(deptLabel) + "</strong>»: pratiche ancora <em>In coda</em>: <strong>" + localCount + "</strong>. " +
+      "L’elenco sotto mostra <strong>tutte</strong> le pratiche del reparto (ogni stato).";
+    if (localCount === 0 && total > 0) {
+      el.innerHTML += " <span style='color:var(--err)'>Nessuna in coda qui: il totale è in altri reparti — cambia reparto.</span>";
+    }
+  }
+
+  function opHighlightRow(praticaId) {
+    document.querySelectorAll(".op-pr-row").forEach(function (r) {
+      r.classList.toggle("is-sel", !!(praticaId && r.getAttribute("data-id") === String(praticaId)));
+    });
+  }
+
+  function getSelectedPraticaMeta() {
+    var id = document.getElementById("op-ticket").value.trim();
+    if (!id) return null;
+    var found = null;
+    (__opPraticheList || []).forEach(function (p) {
+      if (String(p.id) === id) found = p;
+    });
+    return found;
+  }
+
+  function updateOpMailPanel() {
+    var hint = document.getElementById("op-mail-hint");
+    var btn = document.getElementById("op-mail-send");
+    var empId = document.getElementById("op-emp").value.trim();
+    var meta = getSelectedPraticaMeta();
+    if (!meta) {
+      hint.textContent = "Seleziona una pratica dall’elenco.";
+      btn.disabled = true;
+      return;
+    }
+    if (meta.status === "pending_acceptance") {
+      hint.textContent = "Pratica «In coda»: usa «Prendi in carico» (con te come operatore) prima di scrivere al richiedente.";
+      btn.disabled = true;
+      return;
+    }
+    if (meta.status !== "in_progress") {
+      hint.textContent = "Invio diretto consigliato per pratiche «In lavorazione». Stato attuale: " + statusLabelIt(meta.status) + ".";
+      btn.disabled = true;
+      return;
+    }
+    if (!empId) {
+      hint.textContent = "Seleziona l’operatore (deve essere l’assegnatario della pratica).";
+      btn.disabled = true;
+      return;
+    }
+    if (String(meta.assigned_to || "") !== empId) {
+      hint.innerHTML =
+        "Operatore selezionato diversa dall’assegnataria/o: <strong>" +
+        esc(meta.assigned_to_name || "altro utente") +
+        "</strong> ha la pratica. Cambia operatore o pratica.";
+      btn.disabled = true;
+      return;
+    }
+    var em = (meta.customer_email || meta.source_email || "").trim();
+    hint.textContent = em
+      ? "Destinatario: " + em + "."
+      : "Email destinatario ricavata dal ticket di reparto.";
+    btn.disabled = false;
+  }
+
+  async function loadPraticheElenco() {
+    var dept = document.getElementById("op-dept").value;
+    var prev = document.getElementById("op-ticket").value;
+    var elenco = document.getElementById("op-pratiche-elenco");
+    var globalPayload = { tickets: [], total: 0 };
+    var globalFetchError = null;
+    try {
+      globalPayload = await apiFetch("GET", "/pratiche/pending");
+    } catch (eg) {
+      globalFetchError = "Impossibile leggere /pratiche/pending: " + (eg.message || String(eg));
+    }
+    try {
+      var lastT = localStorage.getItem(LS_LAST_TICKET);
+      if (lastT) {
+        try {
+          var loc0 = await apiFetch("GET", "/tickets/" + encodeURIComponent(lastT) + "/department");
+          if (
+            loc0.department &&
+            ["vendita", "acquisto", "manutenzione"].indexOf(loc0.department) >= 0 &&
+            loc0.department !== dept
+          ) {
+            document.getElementById("op-dept").value = loc0.department;
+            localStorage.setItem(LS_LAST_DEPT, loc0.department);
+            await loadEmployees();
+            dept = loc0.department;
+          }
+        } catch (e0) {}
+      }
+      var d = await apiFetch("GET", "/departments/" + encodeURIComponent(dept) + "/pratiche");
+      var list = d.pratiche || [];
+      __opPraticheList = list;
+      var pendingHere = list.filter(function (p) {
+        return p.status === "pending_acceptance";
+      }).length;
+      renderGlobalPendingHint(globalPayload, dept, pendingHere, globalFetchError);
+      if (!list.length) {
+        elenco.innerHTML =
+          "<div style='padding:0.65rem;color:var(--muted)'>Nessuna pratica in questo reparto. " +
+          "Se il registry globale segnala code, prova un altro reparto.</div>";
+        opTicketSelectFill([], null);
+        opHighlightRow("");
+        updateOpMailPanel();
+        return 0;
+      }
+      elenco.innerHTML = list
+        .map(function (p) {
+          var asn = p.assigned_to_name
+            ? esc(p.assigned_to_name)
+            : p.assigned_to
+              ? "<span style='color:var(--muted)'>(id operatore)</span>"
+              : "—";
+          var tit = esc((p.title || "").slice(0, 96));
+          var rq = esc((p.customer_name || "").slice(0, 48) || "—");
+          return (
+            "<div class='op-pr-row' role='button' tabindex='0' data-id='" +
+            esc(p.id) +
+            "' data-status='" +
+            esc(p.status) +
+            "'>" +
+            "<span><code>" +
+            esc(p.id) +
+            "</code></span>" +
+            "<span>" +
+            esc(statusLabelIt(p.status)) +
+            "</span>" +
+            "<span>" +
+            tit +
+            "</span>" +
+            "<span>" +
+            rq +
+            "</span>" +
+            "<span>" +
+            asn +
+            "</span>" +
+            "</div>"
+          );
+        })
+        .join("");
+      elenco.querySelectorAll(".op-pr-row").forEach(function (row) {
+        function pick() {
+          var pid = row.getAttribute("data-id");
+          document.getElementById("op-ticket").value = pid;
+          opHighlightRow(pid);
+          updateOpMailPanel();
+          opLoadThread();
         }
-        localStorage.setItem(lsAssistKey(), d.thread_id);
-        appendChat(chatAs, "bot", d.reply || "");
-        renderTrace(traceAs, d.trace || [], countAs);
-        setStatus(stAs, "Messaggio inviato · sessione " + (d.thread_id || "").slice(0, 8) + "…", "ok");
-        const lastT = localStorage.getItem(LS_LAST_TICKET);
-        if (lastT === ticketId) loadSimulatedInbox();
-      } finally {
-        btnSendAs.disabled = false;
+        row.addEventListener("click", pick);
+        row.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            pick();
+          }
+        });
+      });
+      opTicketSelectFill(list, prev);
+      var sel = document.getElementById("op-ticket");
+      if (prev && Array.from(sel.options).some(function (o) { return o.value === prev; })) {
+        opHighlightRow(prev);
+      } else {
+        var last = localStorage.getItem(LS_LAST_TICKET);
+        if (last && Array.from(sel.options).some(function (o) { return o.value === last; })) {
+          sel.value = last;
+          opHighlightRow(last);
+        } else opHighlightRow(sel.value);
       }
-    });
+      updateOpMailPanel();
+      return list.length;
+    } catch (err) {
+      elenco.innerHTML = "<div style='padding:0.65rem;color:var(--err)'>" + esc(err.message) + "</div>";
+      __opPraticheList = [];
+      opTicketSelectFill([], null);
+      try {
+        renderGlobalPendingHint(globalPayload, document.getElementById("op-dept").value, 0, globalFetchError);
+      } catch (_) {}
+      opHighlightRow("");
+      updateOpMailPanel();
+      return 0;
+    }
+  }
 
-    document.getElementById("dept-assist").addEventListener("change", async () => {
-      await fillEmployeeDropdown(document.getElementById("dept-assist").value);
-      loadAssistThread();
-    });
-    ["ticket-assist", "emp-assist"].forEach((id) => {
-      document.getElementById(id).addEventListener("change", loadAssistThread);
-      document.getElementById(id).addEventListener("blur", loadAssistThread);
-    });
+  async function opOnShow() {
+    updateOperatorHandoffBanner();
+    var ld = localStorage.getItem(LS_LAST_DEPT);
+    if (ld && _validDept(ld)) {
+      document.getElementById("op-dept").value = ld;
+    }
+    await loadEmployees();
+    await loadPraticheElenco();
+    opLoadThread();
+  }
 
-    document.getElementById("input-intake").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("send-intake").click(); }
-    });
-    document.getElementById("input-assist").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("send-assist").click(); }
-    });
+  document.getElementById("op-dept").addEventListener("change", async function () {
+    await loadEmployees();
+    await loadPraticheElenco();
+    opLoadThread();
+  });
+  document.getElementById("op-pending").addEventListener("click", function () {
+    loadPraticheElenco();
+  });
+  document.getElementById("op-ticket").addEventListener("change", function () {
+    opHighlightRow(document.getElementById("op-ticket").value);
+    updateOpMailPanel();
+    opLoadThread();
+  });
+  document.getElementById("op-emp").addEventListener("change", function () {
+    updateOpMailPanel();
+    opLoadThread();
+  });
 
-    loadIntakeThread().then(() => loadContactForCurrentSession());
-    fillEmployeeDropdown(document.getElementById("dept-assist").value).then(() => loadAssistThread());
-    syncIntakeEmpty();
-    syncAssistEmpty();
-    updateInboxTicketLabel();
-    loadSimulatedInbox();
-    setInterval(() => {
-      if (document.getElementById("view-intake").classList.contains("active") && localStorage.getItem(LS_LAST_TICKET)) {
-        loadSimulatedInbox();
+  document.getElementById("op-accept").addEventListener("click", async function () {
+    var dept = document.getElementById("op-dept").value;
+    var ticketId = document.getElementById("op-ticket").value.trim();
+    var empId = document.getElementById("op-emp").value.trim();
+    if (!ticketId || !empId) {
+      setSt("st-op", "Seleziona pratica ed operatore.", "err");
+      return;
+    }
+    var meta = getSelectedPraticaMeta();
+    if (!meta || meta.status !== "pending_acceptance") {
+      setSt("st-op", "«Prendi in carico» vale solo per pratiche in stato «In coda».", "err");
+      return;
+    }
+    setSt("st-op", "Accettazione…", "load");
+    try {
+      await apiFetch("POST", "/departments/" + encodeURIComponent(dept) + "/tickets/" + encodeURIComponent(ticketId) + "/accept", { employee_id: empId });
+      setSt("st-op", "Presa in carico riuscita. Puoi scrivere al richiedente o usare la chat assistenza.", "ok");
+      await loadPraticheElenco();
+      opLoadThread();
+    } catch (err) {
+      setSt("st-op", err.message, "err");
+    }
+  });
+
+  document.getElementById("op-mail-send").addEventListener("click", async function () {
+    var dept = document.getElementById("op-dept").value;
+    var praticaId = document.getElementById("op-ticket").value.trim();
+    var empId = document.getElementById("op-emp").value.trim();
+    var subject = document.getElementById("op-mail-subject").value.trim();
+    var bodyM = document.getElementById("op-mail-body").value.trim();
+    if (!praticaId || !empId || !subject || !bodyM) {
+      setSt("st-op", "Compila oggetto, testo e verifica operatore/pratica.", "err");
+      return;
+    }
+    setSt("st-op", "Invio mail simulata…", "load");
+    document.getElementById("op-mail-send").disabled = true;
+    try {
+      await apiFetch("POST", "/departments/" + encodeURIComponent(dept) + "/pratiche/" + encodeURIComponent(praticaId) + "/mail-richiedente", {
+        employee_id: empId,
+        subject: subject,
+        body: bodyM
+      });
+      document.getElementById("op-mail-subject").value = "";
+      document.getElementById("op-mail-body").value = "";
+      setSt("st-op", "Messaggio registrato: il richiedente lo vede nel tab Richiesta (posta simulata).", "ok");
+    } catch (err) {
+      setSt("st-op", err.message, "err");
+    } finally {
+      updateOpMailPanel();
+    }
+  });
+
+  async function opLoadThread() {
+    var dept = document.getElementById("op-dept").value;
+    var ticketId = document.getElementById("op-ticket").value.trim();
+    var empId = document.getElementById("op-emp").value.trim();
+    var chat = document.getElementById("chat-op");
+    var trace = document.getElementById("trace-op");
+    trace.innerHTML = "";
+    if (!ticketId || !empId) {
+      chat.innerHTML = "";
+      setSt("st-op", "Scegli pratica (menu) e operatore.", "");
+      return;
+    }
+    var key = assistStorageKey(dept, ticketId, empId);
+    var threadId = localStorage.getItem(key);
+    if (!threadId) {
+      chat.innerHTML = "";
+      setSt("st-op", "Dopo presa in carico (in_progress) invia un messaggio per aprire il thread.", "");
+      return;
+    }
+    try {
+      var url = "/assist/thread?department=" + encodeURIComponent(dept)
+        + "&ticket_id=" + encodeURIComponent(ticketId)
+        + "&employee_id=" + encodeURIComponent(empId)
+        + "&thread_id=" + encodeURIComponent(threadId);
+      var d = await apiFetch("GET", url);
+      chat.innerHTML = "";
+      (d.messages || []).forEach(function (m) {
+        if (m.role === "user") bubble(chat, "Operatore", m.content, true);
+        else if (m.role === "assistant") bubble(chat, "Assistente", m.content, false);
+      });
+      setSt("st-op", "Cronologia caricata.", "ok");
+    } catch (err) {
+      chat.innerHTML = "";
+      setSt("st-op", err.message, "err");
+    }
+  }
+
+  document.getElementById("op-send").addEventListener("click", async function () {
+    var dept = document.getElementById("op-dept").value;
+    var ticketId = document.getElementById("op-ticket").value.trim();
+    var empId = document.getElementById("op-emp").value.trim();
+    var message = document.getElementById("op-msg").value.trim();
+    if (!ticketId || !empId || !message) {
+      setSt("st-op", "Pratica, operatore e messaggio obbligatori.", "err");
+      return;
+    }
+    var key = assistStorageKey(dept, ticketId, empId);
+    var threadId = localStorage.getItem(key);
+    var body = { department: dept, ticket_id: ticketId, employee_id: empId, message: message };
+    if (threadId) body.thread_id = threadId;
+
+    setSt("st-op", "Invio…", "load");
+    document.getElementById("op-send").disabled = true;
+    var chat = document.getElementById("chat-op");
+    bubble(chat, "Operatore", message, true);
+    document.getElementById("op-msg").value = "";
+
+    try {
+      var d = await apiFetch("POST", "/assist/chat", body);
+      localStorage.setItem(key, d.thread_id);
+      bubble(chat, "Assistente", d.reply || "", false);
+      traceRender(document.getElementById("trace-op"), d.trace);
+      setSt("st-op", "OK", "ok");
+    } catch (err) {
+      setSt("st-op", err.message, "err");
+    } finally {
+      document.getElementById("op-send").disabled = false;
+    }
+  });
+
+  document.getElementById("op-msg").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById("op-send").click();
+    }
+  });
+
+  document.getElementById("op-mail-body").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById("op-mail-send").click();
+    }
+  });
+
+  document.getElementById("op-new-thread").addEventListener("click", function () {
+    var dept = document.getElementById("op-dept").value;
+    var ticketId = document.getElementById("op-ticket").value.trim();
+    var empId = document.getElementById("op-emp").value.trim();
+    if (ticketId && empId) localStorage.removeItem(assistStorageKey(dept, ticketId, empId));
+    document.getElementById("chat-op").innerHTML = "";
+    document.getElementById("trace-op").innerHTML = "";
+    setSt("st-op", "Thread locale azzerato per questa tripla.", "");
+  });
+
+  /** Ricarica UI da server e storage: usato all’avvio e dopo reload (anche bfcache). */
+  async function bootstrapUi() {
+    loadContact();
+    restoreHandoffSnapshotIfNeeded();
+    try {
+      await reconcileHandoffWithServer();
+    } catch (e) {}
+    renderIntakeOutcomePanel();
+    updateOperatorHandoffBanner();
+    try {
+      await loadInThread();
+    } catch (e) {}
+    try {
+      var trRaw = sessionStorage.getItem(SS_LAST_INTAKE_TRACE);
+      if (trRaw) {
+        var tr = JSON.parse(trRaw);
+        if (Array.isArray(tr) && tr.length) traceRender(document.getElementById("trace-in"), tr);
       }
-    }, 8000);
+    } catch (e) {}
+    try {
+      var dbgRaw = sessionStorage.getItem(SS_LAST_INTAKE_DEBUG);
+      var dbgW = document.getElementById("in-debug-wrap");
+      var dbgP = document.getElementById("in-debug-pre");
+      if (dbgRaw) {
+        var dbgObj = JSON.parse(dbgRaw);
+        if (dbgObj && typeof dbgObj === "object") {
+          dbgW.style.display = "block";
+          dbgP.textContent = JSON.stringify(dbgObj, null, 2);
+        }
+      }
+    } catch (e) {}
+    if (localStorage.getItem(LS_LAST_TICKET)) {
+      try {
+        await refreshInbox();
+      } catch (e) {}
+    }
+    document.getElementById("op-dept").value = localStorage.getItem(LS_LAST_DEPT) || "vendita";
+    try {
+      await loadEmployees();
+      await loadPraticheElenco();
+    } catch (e) {}
+  }
+
+  bootstrapUi().catch(function (e) {
+    console.error(e);
+    setSt("st-in", "Errore aggiornamento dopo reload: " + (e && e.message ? e.message : String(e)), "err");
+  });
+
+  window.addEventListener("pageshow", function (ev) {
+    if (ev.persisted) {
+      bootstrapUi().catch(function (e) {
+        console.error(e);
+      });
+    }
+  });
+})();
   </script>
 </body>
 </html>

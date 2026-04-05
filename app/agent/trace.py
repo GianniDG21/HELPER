@@ -27,12 +27,28 @@ def strip_intake_contact_block(text: str) -> str:
     return INTAKE_CONTACT_BLOCK_RE.sub("", text).strip()
 
 
+def _is_act_phase_label_leak(text: str) -> bool:
+    """Echi della fase ACT (prompt: «Regola operativa») senza testo rivolto al cliente."""
+    raw = (text or "").strip()
+    if not raw:
+        return True
+    collapsed = re.sub(r"\*+", "", raw)
+    collapsed = re.sub(r"\s+", " ", collapsed).strip().lower()
+    if collapsed in ("regola operativa", "regola operativa:"):
+        return True
+    if collapsed.startswith("regola operativa:") and len(collapsed) < 48:
+        return True
+    return False
+
+
 def _is_placeholder_assistant_text(text: str) -> bool:
     """Messaggi interni di stato (es. fasi think/learn) da non mostrare come risposta al cliente."""
     raw = (text or "").strip()
     if not raw:
         return True
     if _PLACEHOLDER_AI_RE.match(raw):
+        return True
+    if _is_act_phase_label_leak(raw):
         return True
     if len(raw) < 160 and raw.startswith("(") and raw.endswith(")"):
         low = raw.lower()
@@ -88,6 +104,21 @@ def _strip_intake_self_correction(text: str) -> str:
     return t.strip()
 
 
+def _strip_intake_act_echo_lines(text: str) -> str:
+    """Rimuove righe che sono solo l’etichetta «Regola operativa» (leak dalla fase ACT)."""
+    if not text or not text.strip():
+        return text
+    lines_out: list[str] = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if _is_act_phase_label_leak(s):
+            continue
+        lines_out.append(line.rstrip())
+    return "\n".join(lines_out).strip()
+
+
 _EMAIL_FIND_RE = re.compile(r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
 
 _INTAKE_REPLY_FALLBACK = (
@@ -124,11 +155,13 @@ _INTERNAL_INTAKE_SNIPPETS = (
     re.compile(r"(?is)l['\u2019]?email\s+che\s+ho\s+utilizzato"),
     re.compile(r"(?is)questo\s+punto\s+.*\s+e\s+soddisfatt[oa]"),
     re.compile(r"(?is)^\s*#{1,6}\s*[–-]?\s*0\d"),
+    re.compile(r"(?is)^\s*\*{0,2}\s*regola\s+operativa\s*:?\s*\*{0,2}\s*$"),
 )
 
 
 def _intake_internal_leak(text: str) -> bool:
-    if "###" in text:
+    # Non basta "###" ovunque: molti modelli (es. Ollama) antepongono ### al testo utile e verrebbe tutto scartato.
+    if re.search(r"(?m)^\s*#{1,6}\s*(?:0\d\b|[Ff]ase\s*0\d|[Ss]tep\s*0\d)", text):
         return True
     if re.search(r"(?i)\b(?:fase|step)\s+0\d\b", text):
         return True
@@ -149,10 +182,12 @@ def _sanitize_intake_customer_reply(text: str, *, form_email: str | None) -> str
         for line in p.splitlines():
             sl = line.strip()
             if re.match(r"^#{1,6}\s+", sl):
+                sl = re.sub(r"^#{1,6}\s+", "", sl).strip()
+                if not sl:
+                    continue
+            if _intake_internal_leak(sl):
                 continue
-            if _intake_internal_leak(line):
-                continue
-            lines_out.append(line.rstrip())
+            lines_out.append(sl)
         sub = "\n".join(lines_out).strip()
         if not sub or _intake_internal_leak(sub):
             continue
@@ -183,6 +218,52 @@ def _drop_paragraphs_with_unlisted_emails(text: str, allowed: str | None) -> str
         if all(e.lower() == allo for e in emails):
             kept.append(pt)
     return "\n\n".join(kept).strip()
+
+
+def _strip_hallucinated_pratica_claims(text: str) -> str:
+    """Elimina frasi che assegnano un ID pratica quando il tool non ha aperto il ticket."""
+    if not text or not text.strip():
+        return text
+    # Spezza per frasi; rimuove quelle che dichiarano un numero pratica/ticket fittizio
+    chunk_re = re.compile(r"(?<=[.!?…])\s+")
+    parts = chunk_re.split(text.strip())
+    if len(parts) <= 1 and not re.search(r"[.!?…]\s*$", text.strip()):
+        parts = [text.strip()]
+    suspect = re.compile(
+        r"(?is)"
+        r"(numero\s+(di\s+)?pratica|pratica\s+del\s+tuo\s+ticket|codice\s+pratica|"
+        r"ticket\s+(è|e\'|e\b|É|è)|il\s+tuo\s+ticket)"
+        r".{0,80}?"
+        r"\b\d{4,}\b"
+    )
+    kept: list[str] = []
+    for p in parts:
+        seg = p.strip()
+        if not seg:
+            continue
+        if suspect.search(seg):
+            continue
+        kept.append(seg)
+    out = " ".join(kept).strip()
+    out = re.sub(r"\s{2,}", " ", out)
+    return out
+
+
+def _align_intake_ticket_number_in_text(text: str, canonical: str) -> str:
+    """Sostituisce il numero dopo «numero pratica» con il ticket_id reale dal tool (evita id inventati)."""
+    if not text or not canonical:
+        return text
+    c = str(canonical).strip()
+    if not c.isdigit():
+        return text
+    t = text
+    # "numero pratica è 2023001", "numero di pratica è **4**", ecc.
+    t = re.sub(
+        r"(?is)((?:\bnumero\s+di\s+pratica|\bnumero\s+pratica|\bil\s+numero\s+di\s+pratica|\bil\s+numero\s+pratica)\s+(?:è|e'|e|É|è)\s*(?:\*\*)?)\s*(\d{1,19})(?:\s*\*\*)?",
+        lambda m: m.group(1) + c,
+        t,
+    )
+    return t
 
 
 def _dedupe_intake_sentences(text: str) -> str:
@@ -221,12 +302,16 @@ def user_visible_reply(
     *,
     strip_intake_meta: bool = False,
     intake_human_raw: str | None = None,
+    intake_routed_ticket_id: str | None = None,
 ) -> str:
     """Risposta unica mostrata in chat/transcript: allineata all ultima sintesi post-tool."""
     text = _raw_synthesis_after_tools(msgs)
     if strip_intake_meta and text:
         text = _strip_intake_self_correction(text)
+        text = _strip_intake_act_echo_lines(text)
     text = format_reply_for_end_user(text)
+    if strip_intake_meta and text:
+        text = _strip_intake_act_echo_lines(text)
     if strip_intake_meta:
         hr = intake_human_raw
         if hr is None:
@@ -238,6 +323,14 @@ def user_visible_reply(
         if text:
             text = _sanitize_intake_customer_reply(text, form_email=form_email)
             text = _dedupe_intake_sentences(text)
+            _, tid_tools = intake_routing_from_turn(msgs)
+            if tid_tools is None:
+                _, tid_tools = intake_routing_from_turn_loose(msgs)
+            routed_tid = intake_routed_ticket_id or tid_tools
+            if routed_tid:
+                text = _align_intake_ticket_number_in_text(text, routed_tid)
+            else:
+                text = _strip_hallucinated_pratica_claims(text)
         if not text or len(text) < 12:
             text = _INTAKE_REPLY_FALLBACK
     return text
@@ -254,11 +347,14 @@ def format_reply_for_end_user(text: str) -> str:
     kept: list[str] = []
     for line in t.splitlines():
         s = line.strip()
+        cur = s
         if re.match(r"^#{1,6}\s+", s):
+            cur = re.sub(r"^#{1,6}\s+", "", s).strip()
+            if not cur:
+                continue
+        if re.search(r"<\s*function|</\s*function|function\s*=", cur, re.IGNORECASE):
             continue
-        if re.search(r"<\s*function|</\s*function|function\s*=", s, re.IGNORECASE):
-            continue
-        kept.append(line.rstrip())
+        kept.append(cur)
     out = "\n".join(kept).strip()
     while "\n\n\n" in out:
         out = out.replace("\n\n\n", "\n\n")
@@ -494,26 +590,85 @@ def transcript_turns(
     return out
 
 
+def _strip_tool_json_fences(raw: str) -> str:
+    s = raw.strip()
+    if not s.startswith("```"):
+        return s
+    s = re.sub(r"^```(?:json)?\s*", "", s, count=1, flags=re.I)
+    fence = s.find("```")
+    if fence >= 0:
+        s = s[:fence].strip()
+    return s.strip()
+
+
+def _try_parse_route_tool_dict(raw: str) -> dict | None:
+    """Estrae un oggetto JSON da route_and_open_ticket (fence markdown, testo attorno)."""
+    s = _strip_tool_json_fences(raw)
+    if not s:
+        return None
+    if s.lstrip().startswith("["):
+        return None
+    if not s.lstrip().startswith("{"):
+        i = s.find("{")
+        j = s.rfind("}")
+        if i < 0 or j <= i:
+            return None
+        s = s[i : j + 1]
+    try:
+        data = json.loads(s)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _intake_routing_pair_from_tool_dict(data: dict, require_pending_queue: bool) -> tuple[str, str] | None:
+    tid = data.get("ticket_id")
+    dept = data.get("helpdesk")
+    if tid is None or tid == "" or dept is None or str(dept).strip() == "":
+        return None
+    if require_pending_queue and data.get("queue_status") != "pending_acceptance":
+        return None
+    if not require_pending_queue:
+        # Stessa impronta del tool: almeno un campo tipico oltre a tid/helpdesk
+        if not any(
+            k in data
+            for k in ("sector_ticket_id", "queue_status", "message")
+        ):
+            return None
+    return (str(dept).strip(), str(tid).strip())
+
+
 def intake_routing_from_turn(msgs: list[BaseMessage]) -> tuple[str | None, str | None]:
     """Ultimo esito route_and_open_ticket nel turno: (helpdesk, ticket_id) o (None, None)."""
     for m in reversed(msgs):
         if not isinstance(m, ToolMessage):
             continue
-        if (getattr(m, "name", None) or "") != "route_and_open_ticket":
+        name = (getattr(m, "name", None) or "").strip()
+        if name and name != "route_and_open_ticket":
             continue
         raw = _content_str(m.content).strip()
-        if not raw:
+        data = _try_parse_route_tool_dict(raw)
+        if not data:
             continue
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
+        pair = _intake_routing_pair_from_tool_dict(data, require_pending_queue=True)
+        if pair:
+            return pair
+    return (None, None)
+
+
+def intake_routing_from_turn_loose(msgs: list[BaseMessage]) -> tuple[str | None, str | None]:
+    """Come intake_routing_from_turn ma accetta JSON senza queue_status pending_acceptance (es. modello lo omette)."""
+    for m in reversed(msgs):
+        if not isinstance(m, ToolMessage):
             continue
-        if not isinstance(data, dict):
+        name = (getattr(m, "name", None) or "").strip()
+        if name and name != "route_and_open_ticket":
             continue
-        tid = data.get("ticket_id")
-        if tid is None or tid == "":
+        raw = _content_str(m.content).strip()
+        data = _try_parse_route_tool_dict(raw)
+        if not data:
             continue
-        tid_str = str(tid).strip()
-        dept = data.get("helpdesk")
-        return (str(dept) if dept else None, tid_str)
+        pair = _intake_routing_pair_from_tool_dict(data, require_pending_queue=False)
+        if pair:
+            return pair
     return (None, None)

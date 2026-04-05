@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
-from langchain_groq import ChatGroq
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
@@ -16,6 +15,8 @@ from app.agent.assist_prompts import (
     ASSIST_PHASE_SCAN,
     ASSIST_PHASE_THINK,
 )
+from app.agent.chat_model import build_chat_model
+from app.agent.learn_context import messages_for_learn
 from app.config import Settings
 from app.tools.ticket_tools import read_ticket_tools, write_ticket_tools
 
@@ -43,11 +44,7 @@ def build_assist_graph(
     *,
     checkpointer: BaseCheckpointSaver | None = None,
 ):
-    llm = ChatGroq(
-        model=settings.groq_model,
-        api_key=settings.groq_api_key,
-        temperature=0,
-    )
+    llm = build_chat_model(settings)
     rt = read_ticket_tools()
     wt = write_ticket_tools()
     all_act_tools = rt + wt
@@ -55,8 +52,8 @@ def build_assist_graph(
     llm_act = llm.bind_tools(all_act_tools)
 
     async def mission_node(state: AssistState) -> dict:
-        hdr = [SystemMessage(content=ASSIST_PHASE_MISSION), state["messages"][-1]]
-        reply = await llm.ainvoke(hdr)
+        msgs = [SystemMessage(content=ASSIST_PHASE_MISSION)] + state["messages"]
+        reply = await llm.ainvoke(msgs)
         return {"messages": [reply]}
 
     async def scan_agent(state: AssistState) -> dict:
@@ -75,7 +72,9 @@ def build_assist_graph(
         return {"messages": [reply]}
 
     async def learn_node(state: AssistState) -> dict:
-        msgs = [SystemMessage(content=ASSIST_PHASE_LEARN)] + state["messages"]
+        msgs = [SystemMessage(content=ASSIST_PHASE_LEARN)] + messages_for_learn(
+            state["messages"]
+        )
         reply = await llm.ainvoke(msgs)
         return {"messages": [reply]}
 

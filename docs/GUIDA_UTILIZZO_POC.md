@@ -8,14 +8,14 @@ Questa guida descrive **come usare la POC** in demo o in prova locale: interfacc
 - La pratica resta in **coda “in attesa”** finché un **dipendente non la prende in carico**.
 - Solo dopo la presa in carico, il dipendente può **chattare** con un assistente che legge/aggiorna i dati **solo del suo reparto**.
 
-Non è un prodotto finito: memoria conversazione in RAM, un solo modello LLM (Groq), niente autenticazione utente.
+Non è un prodotto finito: memoria conversazione in RAM, un solo modello LLM (default **Ollama** locale o **Groq**), niente autenticazione utente.
 
 ---
 
 ## Primo avvio (ordine consigliato)
 
 1. **Clona / apri il progetto** e crea l’ambiente Python (es. `python -m venv .venv`).
-2. **Configura `.env`** partendo da `.env.example` e inserisci `GROQ_API_KEY`.
+2. **Configura `.env`** da `.env.example`: con **Ollama** (default) avvia Ollama e `ollama pull` sul modello in `OLLAMA_MODEL`; con **Groq** imposta `LLM_PROVIDER=groq` e `GROQ_API_KEY`.
 3. **Avvia i database**: `docker compose up -d` (tre istanze Postgres sulle porte 5433, 5434, 5435).
 4. **Installa dipendenze**: `pip install -r requirements.txt`.
 5. **Avvia l’API**: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`.

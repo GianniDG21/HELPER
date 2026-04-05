@@ -1,4 +1,4 @@
-﻿# POC — Helpdesk smistamento richieste + assistenza dipendente
+# POC — Helpdesk smistamento richieste + assistenza dipendente
 
 Prototipo (**POC**) che simula l’arrivo di una **richiesta unificata** (mail/chat), lo **smistamento verso il reparto corretto** (tre database Postgres indipendenti) e la **chat operativa** per il dipendente dopo la **presa in carico** della pratica.
 
@@ -9,7 +9,7 @@ Prototipo (**POC**) che simula l’arrivo di una **richiesta unificata** (mail/c
 
 ## Obiettivo e flusso funzionale
 
-1. **Intake** — `POST /intake/chat`: messaggio del “cliente”. L’agente (LangGraph + Groq) usa tool per **anagrafica** (`lookup_company_by_email`), **elenco reparti** (`list_helpdesks`) e, a richiesta completa, **apre il ticket** nel DB del settore con `route_and_open_ticket`. Stato iniziale del ticket: **`pending_acceptance`**.
+1. **Intake** — `POST /intake/chat`: messaggio del “cliente”. L’agente (LangGraph + LLM locale Ollama o Groq cloud) usa tool per **anagrafica** (`lookup_company_by_email`), **elenco reparti** (`list_helpdesks`) e, a richiesta completa, **apre il ticket** nel DB del settore con `route_and_open_ticket`. Stato iniziale del ticket: **`pending_acceptance`**.
 2. **Coda** — `GET /departments/{reparto}/tickets/pending`: elenco pratiche in attesa per quel reparto.
 3. **Presa in carico** — `POST /departments/{reparto}/tickets/{id}/accept` con `employee_id`: ticket in **`in_progress`** e assegnato al dipendente.
 4. **Assistenza** — `POST /assist/chat`: chat multi-turno **solo** se il ticket è `in_progress` e **assegnato** al dipendente indicato nel body.
@@ -45,7 +45,7 @@ flowchart LR
 |------------|-----|
 | **FastAPI** | API HTTP, montaggio static `/ui` |
 | **LangGraph** | Grafi intake e assist (fasi missione → ricognizione → … ) |
-| **LangChain + ChatGroq** | Modello LLM configurabile (`GROQ_MODEL`) |
+| **LangChain** | LLM: **Ollama** locale (`OLLAMA_MODEL`, default in `.env.example`) oppure **Groq** (`GROQ_MODEL`) |
 | **asyncpg** | Accesso ai tre database |
 | **MemorySaver** | Checkpointer in RAM per thread conversazione |
 
@@ -63,7 +63,7 @@ Struttura cartelle rilevante:
 
 - **Python 3.11+**
 - **Docker Desktop** (o Docker Engine) per i tre Postgres
-- Account **Groq** e [API key](https://console.groq.com)
+- **Ollama** ([ollama.com](https://ollama.com)): `ollama pull qwen2.5:7b` (o altro modello testuale; vedi `OLLAMA_MODEL` in `.env.example`). In alternativa, account **Groq** e [API key](https://console.groq.com) con `LLM_PROVIDER=groq`.
 
 ---
 
@@ -75,7 +75,7 @@ Struttura cartelle rilevante:
    Copy-Item .env.example .env
    ```
 
-2. Compila almeno **`GROQ_API_KEY`**. Le URL di default puntano a `localhost:5433`, `5434`, `5435` (allineate a `docker-compose.yml`).
+2. Con **Ollama** (default): `LLM_PROVIDER=ollama`, avvia Ollama e scarica il modello indicato da `OLLAMA_MODEL`. Con **Groq**: `LLM_PROVIDER=groq` e **`GROQ_API_KEY`**. Le URL DB di default puntano a `localhost:6433`, `6434`, `6435` (allineate a `docker-compose.yml`).
 
 ---
 
@@ -98,9 +98,9 @@ docker compose up -d
 
 | Servizio             | Porta host | Utente / password / DB |
 |----------------------|------------|-------------------------|
-| `postgres_vendita`   | **5433**   | `team` / `team` / `tickets` |
-| `postgres_acquisto`  | **5434**   | idem |
-| `postgres_manutenzione` | **5435** | idem |
+| `postgres_vendita`   | **6433**   | `team` / `team` / `tickets` |
+| `postgres_acquisto`  | **6434**   | idem |
+| `postgres_manutenzione` | **6435** | idem |
 
 ---
 
@@ -187,7 +187,8 @@ Intake e assist condividono lo stesso schema a fasi: **missione** → **ricogniz
 | Problema | Verifica |
 |----------|----------|
 | Errore connessione DB | `docker compose ps`; porte 5433–5435 libere; URL in `.env` |
-| 401/403 Groq | `GROQ_API_KEY` valida e modello `GROQ_MODEL` disponibile sul piano in uso |
+| 401/403 Groq | Solo se `LLM_PROVIDER=groq`: chiave valida e `GROQ_MODEL` disponibile sul piano |
+| Errore connessione Ollama | Ollama in esecuzione; `OLLAMA_BASE_URL` corretto; modello già `pull` |
 | Assist 403/400 | Ticket accettato con lo **stesso** `employee_id`; stato `in_progress` |
 | UI non carica | Avviare uvicorn dalla root progetto; cartella `static/` presente |
 

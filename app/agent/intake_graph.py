@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
-from langchain_groq import ChatGroq
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
@@ -16,6 +15,8 @@ from app.agent.intake_prompts import (
     INTAKE_PHASE_SCAN,
     INTAKE_PHASE_THINK,
 )
+from app.agent.chat_model import build_chat_model
+from app.agent.learn_context import messages_for_learn
 from app.config import Settings
 from app.tools.intake_tools import read_intake_tools, write_intake_tools
 
@@ -43,22 +44,18 @@ def build_intake_graph(
     *,
     checkpointer: BaseCheckpointSaver | None = None,
 ):
-    llm = ChatGroq(
-        model=settings.groq_model,
-        api_key=settings.groq_api_key,
-        temperature=0,
-    )
+    llm = build_chat_model(settings)
     rt = read_intake_tools()
     wt = write_intake_tools()
-    # Groq valida ogni tool-call contro l elenco inviato: act_agent deve poter richiamare
+    # Il backend valida le tool-call contro l elenco inviato: act_agent deve poter richiamare
     # anche i tool di lettura se il modello li ripropone (es. lookup_company_by_email).
     all_act_tools = rt + wt
     llm_scan = llm.bind_tools(rt)
     llm_act = llm.bind_tools(all_act_tools)
 
     async def mission_node(state: IntakeState) -> dict:
-        hdr = [SystemMessage(content=INTAKE_PHASE_MISSION), state["messages"][-1]]
-        reply = await llm.ainvoke(hdr)
+        msgs = [SystemMessage(content=INTAKE_PHASE_MISSION)] + state["messages"]
+        reply = await llm.ainvoke(msgs)
         return {"messages": [reply]}
 
     async def scan_agent(state: IntakeState) -> dict:
@@ -77,7 +74,9 @@ def build_intake_graph(
         return {"messages": [reply]}
 
     async def learn_node(state: IntakeState) -> dict:
-        msgs = [SystemMessage(content=INTAKE_PHASE_LEARN)] + state["messages"]
+        msgs = [SystemMessage(content=INTAKE_PHASE_LEARN)] + messages_for_learn(
+            state["messages"]
+        )
         reply = await llm.ainvoke(msgs)
         return {"messages": [reply]}
 

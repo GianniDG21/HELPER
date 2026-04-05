@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: team
       POSTGRES_DB: tickets
     ports:
-      - "5433:5432"
+      - "6433:5432"
     volumes:
       - pg_vendita:/var/lib/postgresql/data
       - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: team
       POSTGRES_DB: tickets
     ports:
-      - "5434:5432"
+      - "6434:5432"
     volumes:
       - pg_acquisto:/var/lib/postgresql/data
       - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -36,7 +36,7 @@ services:
       POSTGRES_PASSWORD: team
       POSTGRES_DB: tickets
     ports:
-      - "5435:5432"
+      - "6435:5432"
     volumes:
       - pg_manutenzione:/var/lib/postgresql/data
       - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -44,7 +44,20 @@ services:
       - ./sql/seed_employees_manutenzione.sql:/docker-entrypoint-initdb.d/03-employees.sql:ro
       - ./sql/seed_manutenzione.sql:/docker-entrypoint-initdb.d/04-sector.sql:ro
 
+  pratiche:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: team
+      POSTGRES_PASSWORD: team
+      POSTGRES_DB: pratiche
+    ports:
+      - "6436:5432"
+    volumes:
+      - pg_pratiche:/var/lib/postgresql/data
+      - ./sql/pratiche_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
 volumes:
   pg_vendita:
   pg_acquisto:
   pg_manutenzione:
+  pg_pratiche:

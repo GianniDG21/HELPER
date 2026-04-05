@@ -1,4 +1,4 @@
-﻿"""Tool LangChain per ticket officina; il settore e risolto dal contesto richiesta (mai dall LLM)."""
+"""Tool LangChain per ticket officina; il settore e risolto dal contesto richiesta (mai dall LLM)."""
 from __future__ import annotations
 
 import json
@@ -9,6 +9,7 @@ from langchain_core.tools import tool
 
 from app.context import get_team_id
 from app.db import registry
+from app.db.repositories import pratiche as pract_repo
 from app.db.repositories import tickets as repo
 
 log = logging.getLogger(__name__)
@@ -134,12 +135,19 @@ async def update_ticket_status(ticket_id: str, status: str) -> str:
     """Aggiorna lo stato. Args: ticket_id (numero pratica); status: pending_acceptance | open | in_progress | resolved."""
 
     async def work(conn):
+        team = get_team_id()
         try:
             ok = await repo.update_ticket_status(conn, ticket_id, status)
         except Exception as e:  # noqa: BLE001
             return f"Errore aggiornamento: {e!s}"
         if not ok:
             return f"Nessun ticket aggiornato per id={ticket_id}"
+        try:
+            ppool = registry.get_pratiche_pool()
+            async with ppool.acquire() as pc:
+                await pract_repo.update_status_by_sector(pc, team, ticket_id, status)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Aggiornamento mirror pratiche fallito: %s", e)
         return json.dumps({"ticket_id": ticket_id, "status": status}, ensure_ascii=False)
 
     return await _run_db(work)
