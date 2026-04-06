@@ -97,8 +97,9 @@ async def route_and_open_ticket(
     part_code: str | None = None,
 ) -> str:
     """Apre il ticket nel DB del reparto scelto, in coda in attesa di accettazione dipendente (pending_acceptance).
-    Args: helpdesk obbligatorio; title breve; full_summary testo completo per il team; sender_email; sender_name;
-    company_id UUID da anagrafica se noto; sender_phone, vehicle, part_code opzionali."""
+    Args: helpdesk obbligatorio; title breve; full_summary testo completo per il team (includi anno, km o quantita
+    ricambi se pertinenti); sender_email; sender_name; company_id UUID da anagrafica se noto;
+    sender_phone, vehicle (es. modello e anno), part_code opzionali."""
     try:
         out = await execute_route_and_open_ticket(
             helpdesk=helpdesk,

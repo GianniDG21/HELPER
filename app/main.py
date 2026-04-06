@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from collections import defaultdict
 from typing import Annotated
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi import Path as PathParam
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -52,6 +53,14 @@ _CONTACT_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _TICKET_ID_RE = r"^\d+$"
 
 
+def _uuid_eq(a: object, b: object) -> bool:
+    """Confronto UUID tollerante (stringhe da DB/API, uuid.UUID)."""
+    try:
+        return uuid.UUID(str(a)) == uuid.UUID(str(b))
+    except ValueError:
+        return False
+
+
 def _intake_thread_ckpt(client_thread_id: str) -> str:
     return f"inbox:{client_thread_id}"
 
@@ -65,10 +74,70 @@ def _assist_thread_ckpt(
     return f"assist:{department}:{ticket_id}:{employee_id}:{client_thread_id}"
 
 
+async def _pratiche_rows_with_operator_names(raw_rows: list[dict]) -> list[dict]:
+    """Arricchisce righe registry pratiche con assigned_to_name (query per reparto)."""
+    uids_by_dept: dict[str, list[uuid.UUID]] = defaultdict(list)
+    seen_pairs: set[tuple[str, str]] = set()
+    for r in raw_rows:
+        aid = r.get("assigned_to")
+        dept = str(r.get("department") or "")
+        if aid is None or dept not in _TEAMS:
+            continue
+        sid = str(aid)
+        key = (dept, sid)
+        if key in seen_pairs:
+            continue
+        seen_pairs.add(key)
+        try:
+            uids_by_dept[dept].append(uuid.UUID(sid))
+        except ValueError:
+            continue
+    name_by_key: dict[tuple[str, str], str] = {}
+    for dept, uids in uids_by_dept.items():
+        if not uids:
+            continue
+        token = set_team_id(dept)  # type: ignore[arg-type]
+        try:
+            pool = registry.get_pool(dept)
+            async with pool.acquire() as conn:
+                erows = await conn.fetch(
+                    "SELECT id::text AS id, name FROM employees WHERE id = ANY($1::uuid[])",
+                    uids,
+                )
+                for row in erows:
+                    name_by_key[(dept, str(row["id"]))] = str(row["name"])
+        finally:
+            reset_team_id(token)
+    out: list[dict] = []
+    for r in raw_rows:
+        shape = pract_repo.row_as_ticket_api_shape(dict(r))
+        aid = shape.get("assigned_to")
+        dept = str(shape.get("department") or "")
+        shape["assigned_to_name"] = (
+            name_by_key[(dept, aid)] if aid and (dept, aid) in name_by_key else None
+        )
+        out.append(shape)
+    return out
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    await init_pools(settings)
+    app.state.db_available = False
+    app.state.db_startup_error = None
+    try:
+        await init_pools(settings)
+    except Exception as e:
+        app.state.db_startup_error = str(e)
+        log.exception(
+            "Postgres non raggiungibile all'avvio: la UI su /ui e GET /health restano disponibili. "
+            "Avvia i database con `docker compose up -d` e verifica le URL in .env "
+            "(es. postgresql://team:team@localhost:6433/tickets e ...:6436/pratiche). Errore: %s",
+            e,
+        )
+    else:
+        app.state.db_available = True
+
     app.state.checkpointer = MemorySaver()
     app.state.intake_graph = build_intake_graph(
         settings, checkpointer=app.state.checkpointer
@@ -88,11 +157,39 @@ async def lifespan(app: FastAPI):
             settings.groq_model,
         )
     yield
-    await close_pools()
-    log.info("Pool DB chiusi")
+    if getattr(app.state, "db_available", False):
+        await close_pools()
+        log.info("Pool DB chiusi")
 
 
 app = FastAPI(title="Ticket Agent POC — intake + assist", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def _db_required_for_api_routes(request: Request, call_next):
+    """Con DB assente l'app resta in ascolto: static /ui e diagnostica base restano usabili."""
+    if getattr(request.app.state, "db_available", False):
+        return await call_next(request)
+    path = request.url.path
+    if (
+        path == "/health"
+        or path == "/"
+        or path.startswith("/ui")
+        or path.startswith("/docs")
+        or path.startswith("/redoc")
+        or path in ("/openapi.json", "/favicon.ico")
+    ):
+        return await call_next(request)
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": (
+                "Database Postgres non disponibile. Avvia i container: docker compose up -d "
+                "e controlla .env: URL tipo postgresql://team:team@localhost:6433/tickets "
+                "(reparti 6433–6435) e postgresql://team:team@localhost:6436/pratiche."
+            )
+        },
+    )
 
 
 class IntakeChatRequest(BaseModel):
@@ -191,8 +288,12 @@ class MailRichiedenteBody(BaseModel):
 
 
 @app.get("/health")
-async def health():
-    return {"status": "ok"}
+async def health(request: Request):
+    ok = bool(getattr(request.app.state, "db_available", False))
+    body: dict = {"status": "ok" if ok else "degraded", "database": ok}
+    if not ok and getattr(request.app.state, "db_startup_error", None):
+        body["database_error"] = (request.app.state.db_startup_error or "")[:500]
+    return body
 
 
 @app.get("/", include_in_schema=False)
@@ -331,6 +432,7 @@ async def intake_chat(body: IntakeChatRequest):
                 turn_msgs,
                 strip_intake_meta=True,
                 intake_routed_ticket_id=ticket_uuid,
+                intake_routed_department=dept,
             ),
             trace=messages_to_trace(turn_msgs),
             routed_department=dept,
@@ -393,7 +495,7 @@ async def assist_chat(body: AssistChatRequest):
             raise HTTPException(status_code=404, detail="Ticket non trovato")
         if not emprow:
             raise HTTPException(status_code=404, detail="Dipendente non trovato")
-        if str(t.get("assigned_to") or "") != str(body.employee_id):
+        if not _uuid_eq(t.get("assigned_to"), body.employee_id):
             raise HTTPException(
                 status_code=403,
                 detail="Il ticket non e assegnato a questo dipendente",
@@ -475,6 +577,16 @@ async def list_all_pratiche_pending():
     return {"tickets": rows, "total": len(rows)}
 
 
+@app.get("/pratiche")
+async def list_all_pratiche_registry():
+    """Elenco unificato di tutte le pratiche (tutti i reparti, ogni stato) per vista operatore."""
+    ppool = registry.get_pratiche_pool()
+    async with ppool.acquire() as conn:
+        raw_rows = await pract_repo.list_all(conn)
+    out = await _pratiche_rows_with_operator_names(raw_rows)
+    return {"pratiche": out, "total": len(out)}
+
+
 @app.get("/departments/{department}/tickets/pending")
 async def list_pending(department: TeamId):
     """Coda da DB centralizzato pratiche (richiedente + apertura), filtrata per reparto."""
@@ -490,39 +602,7 @@ async def list_department_pratiche(department: TeamId):
     ppool = registry.get_pratiche_pool()
     async with ppool.acquire() as conn:
         raw_rows = await pract_repo.list_all_for_department(conn, department)
-    uids: list[uuid.UUID] = []
-    seen: set[str] = set()
-    for r in raw_rows:
-        aid = r.get("assigned_to")
-        if aid is None:
-            continue
-        sid = str(aid)
-        if sid in seen:
-            continue
-        seen.add(sid)
-        try:
-            uids.append(uuid.UUID(sid))
-        except ValueError:
-            continue
-    name_by_id: dict[str, str] = {}
-    token = set_team_id(department)
-    try:
-        if uids:
-            pool = registry.get_pool(department)
-            async with pool.acquire() as conn:
-                erows = await conn.fetch(
-                    "SELECT id::text AS id, name FROM employees WHERE id = ANY($1::uuid[])",
-                    uids,
-                )
-                name_by_id = {str(row["id"]): str(row["name"]) for row in erows}
-    finally:
-        reset_team_id(token)
-    out: list[dict] = []
-    for r in raw_rows:
-        shape = pract_repo.row_as_ticket_api_shape(dict(r))
-        aid = shape.get("assigned_to")
-        shape["assigned_to_name"] = name_by_id.get(aid) if aid else None
-        out.append(shape)
+    out = await _pratiche_rows_with_operator_names(raw_rows)
     return {"department": department, "pratiche": out}
 
 
@@ -556,7 +636,7 @@ async def mail_richiedente(
             status_code=400,
             detail="La pratica deve essere in lavorazione (in_progress) dopo la presa in carico.",
         )
-    if str(prow.get("assigned_to") or "") != str(eid):
+    if not _uuid_eq(prow.get("assigned_to"), eid):
         raise HTTPException(
             status_code=403,
             detail="Solo il dipendente assegnato può inviare messaggi al richiedente.",
@@ -686,9 +766,81 @@ async def accept_ticket_endpoint(
         reset_team_id(token)
 
 
+@app.post("/departments/{department}/pratiche/{pratica_id}/resolve")
+async def resolve_pratica_endpoint(
+    department: TeamId,
+    body: AcceptTicketBody,
+    pratica_id: Annotated[
+        str, PathParam(min_length=1, max_length=19, pattern=_TICKET_ID_RE)
+    ],
+):
+    """Chiude la pratica (stato resolved) su registry e ticket di reparto; solo assegnatario in_progress."""
+    try:
+        eid = uuid.UUID(body.employee_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, detail="employee_id non è un UUID valido."
+        ) from e
+    ppool = registry.get_pratiche_pool()
+    async with ppool.acquire() as conn:
+        prow = await pract_repo.get_pratica(conn, pratica_id)
+    if not prow:
+        raise HTTPException(status_code=404, detail="Pratica non trovata nel registry.")
+    if prow["department"] != department:
+        raise HTTPException(
+            status_code=404,
+            detail="Il reparto nell'URL non coincide con quello della pratica.",
+        )
+    if str(prow.get("status") or "") != "in_progress":
+        raise HTTPException(
+            status_code=400,
+            detail="Solo pratiche «In lavorazione» possono essere chiuse così.",
+        )
+    if not _uuid_eq(prow.get("assigned_to"), eid):
+        raise HTTPException(
+            status_code=403,
+            detail="Solo il dipendente assegnato può chiudere la pratica.",
+        )
+    sector_id = str(prow["sector_ticket_id"])
+    token = set_team_id(department)
+    try:
+        pool = registry.get_pool(department)
+        async with pool.acquire() as conn:
+            ok_sector = await repo.update_ticket_status(conn, sector_id, "resolved")
+        if not ok_sector:
+            raise HTTPException(
+                status_code=404,
+                detail="Ticket di reparto non trovato o non aggiornabile.",
+            )
+        async with ppool.acquire() as conn:
+            okp = await pract_repo.update_status(conn, pratica_id, "resolved")
+        if not okp:
+            log.error(
+                "Chiusura settore OK ma registry pratica %s non aggiornato",
+                pratica_id,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Inconsistenza registry dopo chiusura; controllare i log.",
+            )
+        return {
+            "ok": True,
+            "department": department,
+            "pratica_id": pratica_id,
+            "status": "resolved",
+        }
+    finally:
+        reset_team_id(token)
+
+
 if STATIC_DIR.is_dir():
     app.mount(
         "/ui",
         StaticFiles(directory=str(STATIC_DIR), html=True),
         name="ui",
+    )
+else:
+    log.error(
+        "Cartella static non trovata (%s): la UI su /ui non è stata montata.",
+        STATIC_DIR,
     )

@@ -6,6 +6,9 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
+from app.intake.request_hints import missing_intake_fallback_reply
+from app.messaging.intake_customer_messages import canonical_pratica_registered
+
 # Blocco aggiunto dal backend dal form contatto (mostrato senza prefisso in UI)
 INTAKE_CONTACT_BLOCK_RE = re.compile(
     r"(?s)^\s*\[Dati contatto richiedente:\s*.*?\]\s*\n*",
@@ -41,6 +44,20 @@ def _is_act_phase_label_leak(text: str) -> bool:
     return False
 
 
+def _is_intake_gate_meta_leak(text: str) -> bool:
+    """Domande/righe tipo «stato apetura pratica soddisfatto?» che il modello a volte copia al posto della risposta."""
+    low = (text or "").strip().lower()
+    if not low:
+        return False
+    if re.search(r"(?is)(?:\(?\s*)?(?:stato|state)\s+apertura\s+pratica", low):
+        return True
+    if re.search(r"(?is)apertura\s+pratica\s*soddisfatt", low):
+        return True
+    if re.search(r"(?is)gate\s+apertura\s+pratica[^\n]{0,60}soddisf", low):
+        return True
+    return False
+
+
 def _is_placeholder_assistant_text(text: str) -> bool:
     """Messaggi interni di stato (es. fasi think/learn) da non mostrare come risposta al cliente."""
     raw = (text or "").strip()
@@ -50,9 +67,13 @@ def _is_placeholder_assistant_text(text: str) -> bool:
         return True
     if _is_act_phase_label_leak(raw):
         return True
+    if _is_intake_gate_meta_leak(raw) and len(raw) < 200:
+        return True
     if len(raw) < 160 and raw.startswith("(") and raw.endswith(")"):
         low = raw.lower()
         if "attesa" in low or "aspetta" in low:
+            return True
+        if _is_intake_gate_meta_leak(raw):
             return True
     return False
 
@@ -121,10 +142,14 @@ def _strip_intake_act_echo_lines(text: str) -> str:
 
 _EMAIL_FIND_RE = re.compile(r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
 
-_INTAKE_REPLY_FALLBACK = (
-    "Grazie per averci scritto. Per aiutarti al meglio, puoi descrivere in breve cosa succede "
-    "quando provi a inserire la pratica nel gestionale (messaggio di errore o comportamento)?"
-)
+
+def _collect_human_intake_thread(msgs: list[BaseMessage]) -> str:
+    """Testo concatenato dei messaggi umani (per fallback se la risposta sintetizzata è vuota)."""
+    chunks: list[str] = []
+    for m in msgs:
+        if isinstance(m, HumanMessage):
+            chunks.append(_content_str(m.content))
+    return "\n\n".join(chunks)
 
 
 def intake_contact_from_human_raw(human_raw: str | None) -> tuple[str | None, str | None, str | None]:
@@ -156,6 +181,24 @@ _INTERNAL_INTAKE_SNIPPETS = (
     re.compile(r"(?is)questo\s+punto\s+.*\s+e\s+soddisfatt[oa]"),
     re.compile(r"(?is)^\s*#{1,6}\s*[–-]?\s*0\d"),
     re.compile(r"(?is)^\s*\*{0,2}\s*regola\s+operativa\s*:?\s*\*{0,2}\s*$"),
+    # Leak tipico fase LEARN (bullet NO/SI + ticket_id) copiato pari pari dal prompt
+    re.compile(r"(?is)controllo\s+obbligatorio"),
+    re.compile(r"(?is)copialo\s+cifra\s+per\s+cifra"),
+    re.compile(r"(?is)numero\s+pratica\s+ammess[oa]"),
+    re.compile(r"(?is)\bqueue_status\b"),
+    re.compile(r"(?is)pending_acceptance"),
+    re.compile(r"(?is)\bticket_id\b"),
+    re.compile(r"(?is)vietato\s+2023001|2024001"),
+    re.compile(r"(?is)\*\*NO\*\*\s*[→\-\>]"),
+    re.compile(r"(?is)\*\*S[IÌ]\*\*\s*[→\-\>]"),
+    re.compile(r"(?is)^\s*-\s*\*\*S[IÌ]\*\*"),
+    re.compile(r"(?is)^\s*-\s*\*\*N[OÒ]\*\*"),
+    re.compile(r"(?is)esito\s*\(\s*se\s+"),
+    re.compile(r"(?is)\bse\s+aperto\s+ticket\b"),
+    re.compile(r"(?is)\bse\s+non\s+aperto\b"),
+    re.compile(r"(?is)(?:\(?\s*)?(?:stato|state)\s+apertura\s+pratica"),
+    re.compile(r"(?is)apertura\s+pratica\s*soddisfatt"),
+    re.compile(r"(?is)gate\s+apertura\s+pratica[^\n]{0,80}soddisf"),
 )
 
 
@@ -250,7 +293,7 @@ def _strip_hallucinated_pratica_claims(text: str) -> str:
 
 
 def _align_intake_ticket_number_in_text(text: str, canonical: str) -> str:
-    """Sostituisce il numero dopo «numero pratica» con il ticket_id reale dal tool (evita id inventati)."""
+    """Sostituisce il numero dopo «numero pratica» / «identificativo pratica» con il ticket_id reale dal tool."""
     if not text or not canonical:
         return text
     c = str(canonical).strip()
@@ -263,7 +306,75 @@ def _align_intake_ticket_number_in_text(text: str, canonical: str) -> str:
         lambda m: m.group(1) + c,
         t,
     )
+    t = re.sub(
+        r"(?is)(\bidentificativo\s+pratica\s*[:\.]?\s*(?:è|e\'|e|É|è)?\s*(?:\*\*)?)\s*(\d{1,19})(?:\s*\*\*)?",
+        lambda m: m.group(1) + c,
+        t,
+    )
+    t = re.sub(
+        r"(?is)(\bcodice\s+pratica\s*[:\.]?\s*(?:è|e\'|e|É|è)?\s*(?:\*\*)?)\s*(\d{1,19})(?:\s*\*\*)?",
+        lambda m: m.group(1) + c,
+        t,
+    )
     return t
+
+
+def _strip_intake_separator_and_branch_lines(text: str) -> str:
+    """Rimuove righe --- e residui di template «due esiti»."""
+    if not text or not text.strip():
+        return text
+    out: list[str] = []
+    for line in text.splitlines():
+        sl = line.strip()
+        if not sl:
+            out.append("")
+            continue
+        if re.match(r"^[\s\-_*=]{3,}$", sl):
+            continue
+        if re.search(r"(?is)esito\s*\(\s*se\s+", sl):
+            continue
+        if re.search(r"(?is)\bse\s+aperto\s+ticket\b", sl):
+            continue
+        if re.search(r"(?is)\bse\s+non\s+aperto\b", sl):
+            continue
+        out.append(line.rstrip())
+    s = "\n".join(out).strip()
+    while "\n\n\n" in s:
+        s = s.replace("\n\n\n", "\n\n")
+    return s
+
+
+def _pratica_id_in_text(text: str, ticket_id: str) -> bool:
+    tid = (ticket_id or "").strip()
+    if not tid or not text:
+        return False
+    if tid.isdigit():
+        return bool(re.search(rf"(?<!\d){re.escape(tid)}(?!\d)", text))
+    return tid in text
+
+
+def _intake_reply_should_be_replaced_by_canonical(text: str, ticket_id: str) -> bool:
+    """True se la risposta LLM è incoerente ma l API ha aperto davvero la pratica."""
+    tid = (ticket_id or "").strip()
+    if not tid:
+        return False
+    raw = (text or "").strip()
+    if not raw:
+        return True
+    if len(raw) < 28:
+        return True
+    low = raw.lower()
+    if re.search(r"(?is)esito\s*\(\s*se\s+", raw):
+        return True
+    if re.search(r"(?is)\bse\s+aperto\s+ticket\b", low):
+        return True
+    if re.search(r"(?is)\bse\s+non\s+aperto\b", low):
+        return True
+    if not _pratica_id_in_text(raw, tid):
+        return True
+    if re.search(r"(?i)\b12345\b", raw) and tid != "12345":
+        return True
+    return False
 
 
 def _dedupe_intake_sentences(text: str) -> str:
@@ -303,6 +414,7 @@ def user_visible_reply(
     strip_intake_meta: bool = False,
     intake_human_raw: str | None = None,
     intake_routed_ticket_id: str | None = None,
+    intake_routed_department: str | None = None,
 ) -> str:
     """Risposta unica mostrata in chat/transcript: allineata all ultima sintesi post-tool."""
     text = _raw_synthesis_after_tools(msgs)
@@ -320,19 +432,27 @@ def user_visible_reply(
                     hr = _content_str(m.content)
                     break
         _, _, form_email = intake_contact_from_human_raw(hr) if hr else (None, None, None)
+        _, tid_tools = intake_routing_from_turn(msgs)
+        if tid_tools is None:
+            _, tid_tools = intake_routing_from_turn_loose(msgs)
+        routed_tid = intake_routed_ticket_id or tid_tools
         if text:
             text = _sanitize_intake_customer_reply(text, form_email=form_email)
             text = _dedupe_intake_sentences(text)
-            _, tid_tools = intake_routing_from_turn(msgs)
-            if tid_tools is None:
-                _, tid_tools = intake_routing_from_turn_loose(msgs)
-            routed_tid = intake_routed_ticket_id or tid_tools
             if routed_tid:
                 text = _align_intake_ticket_number_in_text(text, routed_tid)
+                text = _strip_intake_separator_and_branch_lines(text)
+                text = _sanitize_intake_customer_reply(text, form_email=form_email)
+                text = _dedupe_intake_sentences(text)
+                if _intake_reply_should_be_replaced_by_canonical(text, routed_tid):
+                    text = canonical_pratica_registered(intake_routed_department, routed_tid)
             else:
                 text = _strip_hallucinated_pratica_claims(text)
         if not text or len(text) < 12:
-            text = _INTAKE_REPLY_FALLBACK
+            if routed_tid:
+                text = canonical_pratica_registered(intake_routed_department, routed_tid)
+            else:
+                text = missing_intake_fallback_reply(_collect_human_intake_thread(msgs))
     return text
 
 

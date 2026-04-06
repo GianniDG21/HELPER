@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import TYPE_CHECKING, Literal
 
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
@@ -13,6 +12,7 @@ from app.agent.trace import (
     strip_intake_contact_block,
 )
 from app.intake.companies_registry import lookup_company_by_email
+from app.intake.request_hints import operational_gate_heuristic
 from app.tools.intake_tools import execute_route_and_open_ticket
 
 if TYPE_CHECKING:
@@ -21,13 +21,6 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 TeamId = Literal["vendita", "acquisto", "manutenzione"]
-
-_AUTH_RE = re.compile(
-    r"(?is)\b(confermo|autorizz|autorizza|segnaliamo|chiediamo|richiediamo|"
-    r"in\s+qualit[aà]|per\s+conto|nostro\s+ordine|nostra\s+fattura|"
-    r"siamo\s+autorizz|ufficio\s+acquisti|procedere\s+con|"
-    r"richiesta\s+di\s+verifica|segnalazione)\b"
-)
 
 
 def route_tool_message_seen(turn_msgs: list[BaseMessage]) -> bool:
@@ -45,12 +38,6 @@ def _human_thread_text(msgs: list[BaseMessage]) -> str:
         if isinstance(m, HumanMessage):
             chunks.append(_content_str(m.content))
     return "\n\n".join(chunks)
-
-
-def _authorization_heuristic(thread_text: str) -> bool:
-    if not thread_text or len(thread_text.strip()) < 8:
-        return False
-    return bool(_AUTH_RE.search(thread_text))
 
 
 def _infer_helpdesk(sender_email: str, summary: str) -> TeamId:
@@ -126,7 +113,7 @@ async def try_intake_fallback_open(
         return None, None
 
     thread_t = _human_thread_text(full_msgs)
-    if not _authorization_heuristic(thread_t):
+    if not operational_gate_heuristic(thread_t):
         return None, None
 
     sender_name = f"{nome.strip()} {cognome.strip()}".strip()

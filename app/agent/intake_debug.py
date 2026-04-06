@@ -109,7 +109,7 @@ def build_intake_debug(
         )
     else:
         diagnosis.append(
-            "Nessuna chiamata a route_and_open_ticket nel turno: gate contatti, "
+            "Nessuna chiamata a route_and_open_ticket nel turno: gate apertura (contatti + dati richiesta), "
             "fase grafo o modello non ha chiuso lo smistamento."
         )
 

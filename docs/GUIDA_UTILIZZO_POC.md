@@ -2,9 +2,11 @@
 
 Questa guida descrive **come usare la POC** in demo o in prova locale: interfaccia web, flusso operativo consigliato, dati di esempio e messaggi di errore frequenti.
 
+Per una versione **solo operativa** (senza dettagli tecnici in interfaccia) vedi anche [MANUALE_OPERATIVO.md](MANUALE_OPERATIVO.md) e l’URL **/ui/clean.html**.
+
 ## Cosa dimostra la POC
 
-- Un **canale unico** (messaggio tipo email) arriva alla centrale: l’agente **capisce la richiesta**, interroga **anagrafica** e **elenchi reparti**, e **apre la pratica solo dopo** aver raccolto **email esplicita**, **nome referente** e **conferma di autorizzazione** dal mittente.
+- Un **canale unico** (messaggio tipo email) arriva alla centrale: l’agente **capisce la richiesta**, interroga **anagrafica** e **elenchi reparti**, e **apre la pratica** dopo **email**, **nome referente** e i **dati operativi minimi** (es. **anno e km** per interventi su veicolo, **quantità** per ricambi; per richieste d’ufficio basta una descrizione sufficiente). **Non** richiede una generica «autorizzazione» all’apertura del ticket.
 - La pratica resta in **coda “in attesa”** finché un **dipendente non la prende in carico**.
 - Solo dopo la presa in carico, il dipendente può **chattare** con un assistente che legge/aggiorna i dati **solo del suo reparto**.
 
@@ -16,12 +18,12 @@ Non è un prodotto finito: memoria conversazione in RAM, un solo modello LLM (de
 
 1. **Clona / apri il progetto** e crea l’ambiente Python (es. `python -m venv .venv`).
 2. **Configura `.env`** da `.env.example`: con **Ollama** (default) avvia Ollama e `ollama pull` sul modello in `OLLAMA_MODEL`; con **Groq** imposta `LLM_PROVIDER=groq` e `GROQ_API_KEY`.
-3. **Avvia i database**: `docker compose up -d` (tre istanze Postgres sulle porte 5433, 5434, 5435).
-4. **Installa dipendenze**: `pip install -r requirements.txt`.
-5. **Avvia l’API**: `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`.
+3. **Installa dipendenze**: `pip install -r requirements.txt`.
+4. **Avvia tutto in un colpo** (consigliato dopo il primo setup): dalla root del repo, **Windows** `.\scripts\start.ps1`, **Linux/macOS** `./scripts/start.sh` — esegue `docker compose up -d` (quattro Postgres su host **6433**–**6436**) e poi **uvicorn** sulla porta **8000** (sovrascrivibile con `HELPER_PORT`). Dettagli nel [README](../README.md#avvio-applicazione).
+5. In alternativa, passo passo: **`docker compose up -d`** poi **`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`** (con venv attivo).
 6. **Apri l’interfaccia**: nel browser vai a **http://127.0.0.1:8000/ui/**
 
-Se cambi gli script SQL e vuoi ricreare i DB da zero: `docker compose down -v` poi di nuovo `docker compose up -d`.
+Se cambi gli script SQL e vuoi ricreare i DB da zero: `docker compose down -v` poi di nuovo `docker compose up -d` (o di nuovo lo script di start).
 
 ---
 
@@ -34,7 +36,7 @@ Se cambi gli script SQL e vuoi ricreare i DB da zero: `docker compose down -v` p
 - Se l’agente ha effettivamente aperto la pratica (`route_and_open_ticket`), l’API restituisce **`routed_department`** e **`ticket_id`**: in background vengono compilati **reparto** e **codice pratica** per il tab Dipendente **senza** cambiare tab (resti sulla chat richiesta). Alla prima apertura del tab Dipendente con quel reparto, l’elenco **Pratiche in attesa** può aggiornarsi automaticamente.
 - Sotto la chat, la sezione collassabile **«Cosa è successo dietro le quinte»** mostra, in linguaggio semplice, i passaggi (verifica anagrafica, caricamento reparti, apertura ticket). I dettagli tecnici (JSON) sono espandibili.
 
-**Suggerimento per la demo:** dopo aver fornito email, nome e conferma autorizzazione, un dominio tipo `trasportinord.it` o `disbrigo.it` fa vedere l’**anagrafica** in azione.
+**Suggerimento per la demo:** con email e nome nel modulo, un dominio tipo `trasportinord.it` o `disbrigo.it` fa vedere l’**anagrafica** in azione; per il reparto manutenzione ricorda **km** (e anno/modello se mancano).
 
 Il pulsante **Pulisci** (tab Richiesta) azzera la conversazione salvata nel browser.
 
@@ -53,7 +55,7 @@ Anche qui è disponibile il pannello **dietro le quinte** per l’ultimo turno.
 
 | Passo | Azione |
 |------|--------|
-| 1 | Tab **Richiesta**: messaggio con **email**, **nome referente** e **conferma che puoi inoltrare la pratica** (es. *«Sono Mario Ronchi, mario.ronchi@disbrigo.it, confermo di essere autorizzato. Problema ordine 998»*). |
+| 1 | Tab **Richiesta**: modulo **nome/cognome/email** e messaggio con **tutti i dati utili** (es. ordine B2B: *«Sono Mario Ronchi, problema ordine 998…»*; officina: *«Tagliando Polo 2018, km 72.000»*). |
 | 2 | Se manca qualcosa, rispondi alle **singole** domande dell’agente. |
 | 3 | Con **codice pratica** e reparto (es. acquisto), puoi restare sulla richiesta o aprire **Dipendente** (campi già compilati). |
 | 4 | Tab **Dipendente**: menu **Dipendente** → es. **Sara Acquisti** o **Luca Fornitori**; verifica **Pratiche in attesa** se serve. |

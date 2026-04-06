@@ -9,20 +9,26 @@ _pratiche_pool: asyncpg.Pool | None = None
 
 
 async def init_pools(settings: Settings) -> None:
+    """Crea tutti i pool; in caso di errore chiude eventuali pool già aperti e rilancia."""
     global _pratiche_pool
-    for team_id, url in settings.db_urls_by_team.items():
-        _pools[team_id] = await asyncpg.create_pool(
-            url,
+    await close_pools()
+    try:
+        for team_id, url in settings.db_urls_by_team.items():
+            _pools[team_id] = await asyncpg.create_pool(
+                url,
+                min_size=1,
+                max_size=5,
+                command_timeout=60,
+            )
+        _pratiche_pool = await asyncpg.create_pool(
+            settings.pratiche_database_url,
             min_size=1,
             max_size=5,
             command_timeout=60,
         )
-    _pratiche_pool = await asyncpg.create_pool(
-        settings.pratiche_database_url,
-        min_size=1,
-        max_size=5,
-        command_timeout=60,
-    )
+    except Exception:
+        await close_pools()
+        raise
 
 
 async def close_pools() -> None:

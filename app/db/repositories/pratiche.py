@@ -68,6 +68,20 @@ async def get_pratica(conn: asyncpg.Connection, pratica_id: str) -> dict[str, An
     return dict(row) if row else None
 
 
+async def list_all(conn: asyncpg.Connection) -> list[dict[str, Any]]:
+    """Tutte le pratiche (tutti i reparti), per vista operatore unificata."""
+    rows = await conn.fetch(
+        """
+        SELECT id, department, sector_ticket_id, requested_by_name, requested_by_email,
+               requested_by_phone, company_id, title, full_summary, vehicle, part_code,
+               status, assigned_to, created_at, accepted_at
+        FROM pratiche
+        ORDER BY created_at DESC
+        """
+    )
+    return [dict(r) for r in rows]
+
+
 async def list_all_for_department(
     conn: asyncpg.Connection, department: str
 ) -> list[dict[str, Any]]:

@@ -122,7 +122,7 @@
     .op-pr-scroll { max-height: 240px; overflow: auto; }
     .op-pr-head, .op-pr-row {
       display: grid;
-      grid-template-columns: 4.2rem 7.2rem minmax(5rem, 1fr) minmax(5.5rem, 1fr) 6.5rem;
+      grid-template-columns: 4.2rem 7.2rem 5.5rem minmax(4rem, 1fr) minmax(4.5rem, 1fr) 6.2rem;
       gap: 0.35rem;
       padding: 0.35rem 0.5rem;
       align-items: start;
@@ -143,16 +143,27 @@
     .op-mail-panel .field { margin-bottom: 0.5rem; }
     .op-ticket-row { margin: 0 1rem 0.5rem; font-size: 0.78rem; color: var(--muted); }
     .op-ticket-row select { max-width: 100%; }
+
+    .clean-only { display: none; }
+    .helper-clean .tech-only { display: none !important; }
+    .helper-clean .clean-only { display: block; }
+    .helper-clean .clean-only.flex-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .ui-switch { margin-left: auto; font-size: 0.78rem; }
+    .ui-switch a { color: var(--accent); }
+    .clean-hint { margin: 0 1rem 0.75rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
   </style>
 </head>
 <body>
   <header>
-    <h1>HELPER · Assistenza officina (POC)</h1>
+    <h1 id="app-title">HELPER · Assistenza officina (POC)</h1>
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tab-in" aria-selected="true" aria-controls="view-in">Richiesta</button>
       <button type="button" role="tab" id="tab-op" aria-selected="false" aria-controls="view-op">Dipendente</button>
     </div>
-    <p class="hint">API: intake <code>POST /intake/chat</code>; elenco pratiche reparto <code>GET /departments/{dept}/pratiche</code>; coda globale <code>GET /pratiche/pending</code>; presa in carico <code>POST …/accept</code>; mail al richiedente <code>POST …/pratiche/{id}/mail-richiedente</code>; assist <code>POST /assist/chat</code>.</p>
+    <p class="hint tech-only">API: intake <code>POST /intake/chat</code>; elenco pratiche reparto <code>GET /departments/{dept}/pratiche</code>; coda globale <code>GET /pratiche/pending</code>; presa in carico <code>POST …/accept</code>; mail al richiedente <code>POST …/pratiche/{id}/mail-richiedente</code>; assist <code>POST /assist/chat</code>.</p>
+    <p class="hint clean-only">Compila i tuoi dati, descrivi la richiesta e segui l’assistente. In «Dipendente» il reparto gestisce le pratiche e può risponderti.</p>
+    <p class="ui-switch tech-only"><a href="index.html?clean=1">Vista pulita</a> (senza dettagli tecnici)</p>
+    <p class="ui-switch clean-only"><a href="index.html">Vista tecnica</a> (per sviluppo e test API)</p>
   </header>
 
   <main>
@@ -166,7 +177,8 @@
             <div class="field"><label for="in-ln">Cognome</label><input id="in-ln" type="text" autocomplete="family-name" /></div>
             <div class="field"><label for="in-em">Email</label><input id="in-em" type="email" autocomplete="email" /></div>
           </div>
-          <p class="callout">L’API richiede nome, cognome e email insieme per ogni messaggio. Risposta: <code>thread_id</code>, <code>reply</code>, <code>trace</code>, opzionali <code>routed_department</code> e <code>ticket_id</code> (solo se il tool ha aperto la pratica).</p>
+          <p class="callout tech-only">L’API richiede nome, cognome e email insieme per ogni messaggio. Risposta: <code>thread_id</code>, <code>reply</code>, <code>trace</code>, opzionali <code>routed_department</code> e <code>ticket_id</code> (solo se il tool ha aperto la pratica).</p>
+          <p class="callout clean-only">Per ogni messaggio servono nome, cognome e email. Quando la pratica è registrata, il riepilogo a destra mostra numero e reparto attendibili.</p>
         </div>
         <div class="chat" id="chat-in"></div>
         <div class="pad" style="padding-top:0">
@@ -179,17 +191,28 @@
         <div class="status" id="st-in">Pronto.</div>
       </div>
       <div class="col-side">
-        <h2>Traccia · posta simulata</h2>
-        <div class="trace" id="trace-in"></div>
+        <div class="tech-only">
+          <h2>Traccia · posta simulata</h2>
+          <div class="trace" id="trace-in"></div>
+        </div>
+        <div class="clean-only">
+          <h2>Messaggi dal reparto</h2>
+          <p class="clean-hint" style="margin-top:0">Qui vedrai i messaggi che il reparto invia al tuo indirizzo (simulazione demo).</p>
+        </div>
         <div class="api-outcome muted" id="in-api-outcome" aria-live="polite">
-          <div><strong>Esito API</strong> (unica fonte per ID pratica e reparto). Il testo nella chat può contenere numeri inventati dal modello.</div>
+          <div class="tech-only"><strong>Esito API</strong> (unica fonte per ID pratica e reparto). Il testo nella chat può contenere numeri inventati dal modello.</div>
+          <div class="clean-only"><strong>Stato della pratica</strong> — numero e reparto confermati dal sistema quando la richiesta è stata accettata.</div>
           <div style="margin-top:0.35rem" id="in-api-outcome-body">Nessuna risposta ancora: invia un messaggio dalla tab Richiesta.</div>
-          <div class="row-actions">
+          <div class="row-actions clean-only flex-row">
+            <button type="button" class="btn" id="btn-to-operator-clean" style="padding:0.35rem 0.65rem;font-size:0.78rem">Vai al reparto</button>
+            <button type="button" class="btn secondary" id="in-inbox-refresh-clean" style="padding:0.35rem 0.65rem;font-size:0.78rem">Aggiorna messaggi</button>
+          </div>
+          <div class="row-actions tech-only">
             <button type="button" class="btn" id="btn-to-operator" style="padding:0.35rem 0.65rem;font-size:0.78rem">Apri tab Dipendente e allinea elenco</button>
             <button type="button" class="btn secondary" id="in-inbox-refresh" style="padding:0.35rem 0.65rem;font-size:0.78rem">Aggiorna mail simulate</button>
           </div>
         </div>
-        <details id="in-debug-wrap" style="display:none;margin:0 1rem 0.75rem;font-size:0.72rem;color:var(--muted)">
+        <details id="in-debug-wrap" class="tech-only" style="display:none;margin:0 1rem 0.75rem;font-size:0.72rem;color:var(--muted)">
           <summary style="cursor:pointer;color:var(--accent);font-weight:600">Debug intake (server)</summary>
           <pre id="in-debug-pre" style="white-space:pre-wrap;margin:0.4rem 0 0;max-height:16rem;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:0.45rem;background:#0a0e14"></pre>
         </details>
@@ -209,6 +232,7 @@
             <div class="field">
               <label for="op-dept">Reparto</label>
               <select id="op-dept">
+                <option value="">Tutti i reparti (vista unificata)</option>
                 <option value="vendita">vendita</option>
                 <option value="acquisto">acquisto</option>
                 <option value="manutenzione">manutenzione</option>
@@ -219,15 +243,18 @@
               <select id="op-emp"><option value="">—</option></select>
             </div>
           </div>
-          <p class="callout">Elenco pratiche: <code>GET /departments/{reparto}/pratiche</code> (tutti gli stati, con operatore assegnato). Coda globale ancora <code>GET /pratiche/pending</code>. Presa in carico: <code>POST …/tickets/{id}/accept</code>. Messaggio al richiedente (email simulata): <code>POST …/pratiche/{id}/mail-richiedente</code> oppure chat assistenza.</p>
+          <p class="callout tech-only">Elenco: <code>GET /pratiche</code> (tutti i reparti) oppure <code>GET /departments/{reparto}/pratiche</code>. Coda globale: <code>GET /pratiche/pending</code>. Presa in carico: <code>POST …/tickets/{id}/accept</code>. Chiusura: <code>POST …/pratiche/{id}/resolve</code>. Mail simulata: <code>POST …/pratiche/{id}/mail-richiedente</code>.</p>
+          <p class="callout clean-only">Puoi lasciare «Tutti i reparti» per un elenco unico; scegliendo una pratica si imposta il reparto per operatore e azioni. Dopo la presa in carico puoi chiudere la pratica quando è risolta.</p>
           <div class="row">
             <button type="button" class="btn secondary" id="op-pending">Aggiorna elenco pratiche</button>
             <button type="button" class="btn" id="op-accept">Prendi in carico</button>
+            <button type="button" class="btn secondary" id="op-resolve" disabled title="Richiede pratica In lavorazione e operatore = assegnatario">Chiudi pratica (risolto)</button>
           </div>
+          <p id="op-resolve-hint" style="margin:0 1rem 0.6rem;font-size:0.78rem;color:var(--muted);line-height:1.45;max-width:48rem"></p>
           <div id="op-pending-global" style="margin:0 0 0.6rem;font-size:0.78rem;color:var(--muted);line-height:1.45"></div>
           <div class="op-pr-wrap">
             <div class="op-pr-scroll" id="op-pratiche-scroll">
-              <div class="op-pr-head"><span>ID</span><span>Stato</span><span>Titolo</span><span>Richiedente</span><span>Assegnato a</span></div>
+              <div class="op-pr-head"><span>ID</span><span>Stato</span><span>Reparto</span><span>Titolo</span><span>Richiedente</span><span>Assegnato a</span></div>
               <div id="op-pratiche-elenco"></div>
             </div>
           </div>
@@ -251,11 +278,17 @@
             <button type="button" class="btn secondary" id="op-new-thread">Nuovo thread chat</button>
           </div>
         </div>
-        <div class="status" id="st-op">Scegli reparto, aggiorna elenco pratiche, operatore e pratica.</div>
+        <div class="status" id="st-op">Opzionale: filtra per reparto; in «Tutti i reparti» clicca una riga per impostare reparto e operatore.</div>
       </div>
       <div class="col-side">
-        <h2>Traccia assistenza</h2>
-        <div class="trace" id="trace-op"></div>
+        <div class="tech-only">
+          <h2>Traccia assistenza</h2>
+          <div class="trace" id="trace-op"></div>
+        </div>
+        <div class="clean-only">
+          <h2>Informazioni</h2>
+          <p class="clean-hint" style="margin-top:0">La chat con l’assistente per il reparto è nel pannello principale. I passaggi automatici interni non sono mostrati in questa vista.</p>
+        </div>
       </div>
     </section>
   </main>
@@ -263,6 +296,13 @@
   <script>
 (function () {
   "use strict";
+
+  var H_CLEAN = /(?:^|[?&])clean=1(?:&|$)/.test(location.search);
+  if (H_CLEAN) {
+    document.documentElement.classList.add("helper-clean");
+    var appTitle = document.getElementById("app-title");
+    if (appTitle) appTitle.textContent = "HELPER · Assistenza officina";
+  }
 
   /* --- API (allineata a app/main.py) --- */
   const LS_IN_THREAD = "helper_in_thread";
@@ -326,15 +366,26 @@
     });
   });
 
-  document.getElementById("btn-to-operator").addEventListener("click", async function () {
+  function wireBtnToOperator() {
     setTab("op");
-    try {
-      await syncOperatorMaskFromHandoff();
-      await opLoadThread();
-      setSt("st-op", "Maschera allineata all’ultimo esito API (Richiesta).", "ok");
-    } catch (e) {
-      setSt("st-op", (e && e.message) ? e.message : String(e), "err");
-    }
+    syncOperatorMaskFromHandoff()
+      .then(function () {
+        return opLoadThread();
+      })
+      .then(function () {
+        setSt("st-op", H_CLEAN ? "Reparto aggiornato in base all’ultima richiesta." : "Maschera allineata all’ultimo esito API (Richiesta).", "ok");
+      })
+      .catch(function (e) {
+        setSt("st-op", (e && e.message) ? e.message : String(e), "err");
+      });
+  }
+
+  document.getElementById("btn-to-operator").addEventListener("click", wireBtnToOperator);
+  var btnToOpClean = document.getElementById("btn-to-operator-clean");
+  if (btnToOpClean) btnToOpClean.addEventListener("click", wireBtnToOperator);
+  var inInboxClean = document.getElementById("in-inbox-refresh-clean");
+  if (inInboxClean) inInboxClean.addEventListener("click", function () {
+    refreshInbox();
   });
 
   /* --- Intake --- */
@@ -399,6 +450,40 @@
 
   function _validDept(d) {
     return d && ["vendita", "acquisto", "manutenzione"].indexOf(d) >= 0;
+  }
+
+  /** Confronto UUID case-insensitive (select vs API). */
+  function normEmpId(s) {
+    if (s == null || s === "") return "";
+    return String(s).trim().toLowerCase();
+  }
+
+  function empIdsMatch(a, b) {
+    return normEmpId(a) !== "" && normEmpId(a) === normEmpId(b);
+  }
+
+  /** Se la pratica ha un assegnatario, seleziona quel dipendente nel menu (se presente nell’elenco). */
+  function syncOperatorToAssignee() {
+    var meta = getSelectedPraticaMeta();
+    var sel = document.getElementById("op-emp");
+    if (!meta || !meta.assigned_to || !sel) return;
+    var want = normEmpId(meta.assigned_to);
+    if (!want) return;
+    for (var i = 0; i < sel.options.length; i++) {
+      var o = sel.options[i];
+      if (normEmpId(o.value) === want) {
+        sel.value = o.value;
+        return;
+      }
+    }
+  }
+
+  /** Reparto effettivo per API: menu reparto oppure reparto della pratica selezionata (vista unificata). */
+  function operatorEffectiveDept() {
+    var d = document.getElementById("op-dept").value;
+    if (_validDept(d)) return d;
+    var m = getSelectedPraticaMeta();
+    return m && _validDept(m.department) ? m.department : "";
   }
 
   function snapshotFromIntakeResponse(d) {
@@ -492,18 +577,23 @@
       wrap.className = "api-outcome ok";
       body.innerHTML =
         "Pratica registrata: <strong>#" + esc(snap.ticket_id) + "</strong> · reparto <strong>" + esc(snap.routed_department) + "</strong>" +
-        (snap.thread_id ? "<br/><span style='color:var(--muted);font-size:0.72rem'>thread " + esc(snap.thread_id.slice(0, 8)) + "…</span>" : "");
+        (!H_CLEAN && snap.thread_id
+          ? "<br/><span style='color:var(--muted);font-size:0.72rem'>thread " + esc(snap.thread_id.slice(0, 8)) + "…</span>"
+          : "");
       return;
     }
     if (snap.ticket_id) {
       wrap.className = "api-outcome ok";
-      body.innerHTML = "Pratica <strong>#" + esc(snap.ticket_id) + "</strong> (reparto da confermare con «Apri tab Dipendente…»).";
+      body.innerHTML = H_CLEAN
+        ? "Pratica <strong>#" + esc(snap.ticket_id) + "</strong> — per il reparto usa il pulsante «Vai al reparto» o apri il tab Dipendente."
+        : "Pratica <strong>#" + esc(snap.ticket_id) + "</strong> (reparto da confermare con «Apri tab Dipendente…»).";
       return;
     }
     wrap.className = "api-outcome warn";
-    body.innerHTML =
-      "<strong>Nessuna pratica aperta</strong> dall’API in questo turno. " +
-      "Ignora eventuali «numeri pratica» scritti dall’assistente nella chat: non sono validi finché non compaiono qui.";
+    body.innerHTML = H_CLEAN
+      ? "<strong>La pratica non risulta ancora registrata</strong> dal sistema in questo scambio. Non fare affidamento su numeri citati solo nella chat finché non compaiono qui."
+      : "<strong>Nessuna pratica aperta</strong> dall’API in questo turno. " +
+        "Ignora eventuali «numeri pratica» scritti dall’assistente nella chat: non sono validi finché non compaiono qui.";
   }
 
   function updateOperatorHandoffBanner() {
@@ -511,14 +601,17 @@
     var snap = loadIntakeHandoff();
     if (snap && snap.ticket_id && snap.routed_department) {
       el.className = "op-banner is-on";
-      el.innerHTML =
-        "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> · <strong>" + esc(snap.routed_department) +
-        "</strong> — usa <strong>Apri tab Dipendente e allinea elenco</strong> dalla Richiesta oppure <strong>Aggiorna elenco pratiche</strong> qui.";
+      el.innerHTML = H_CLEAN
+        ? "Ultima richiesta registrata: pratica <strong>#" + esc(snap.ticket_id) + "</strong>, reparto <strong>" + esc(snap.routed_department) + "</strong>. Apri il tab Dipendente e aggiorna l’elenco."
+        : "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> · <strong>" + esc(snap.routed_department) +
+          "</strong> — usa <strong>Apri tab Dipendente e allinea elenco</strong> dalla Richiesta oppure <strong>Aggiorna elenco pratiche</strong> qui.";
       return;
     }
     if (snap && snap.ticket_id) {
       el.className = "op-banner is-on";
-      el.innerHTML = "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> (reparto: allinea con Aggiorna elenco o dalla Richiesta).";
+      el.innerHTML = H_CLEAN
+        ? "Ultima pratica: <strong>#" + esc(snap.ticket_id) + "</strong>. Apri il tab Dipendente e aggiorna l’elenco per vedere il reparto."
+        : "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> (reparto: allinea con Aggiorna elenco o dalla Richiesta).";
       return;
     }
     el.className = "op-banner";
@@ -610,11 +703,16 @@
       var dbgW = document.getElementById("in-debug-wrap");
       var dbgP = document.getElementById("in-debug-pre");
       if (d.debug && typeof d.debug === "object") {
-        dbgW.style.display = "block";
-        dbgP.textContent = JSON.stringify(d.debug, null, 2);
         try {
           sessionStorage.setItem(SS_LAST_INTAKE_DEBUG, JSON.stringify(d.debug));
         } catch (e2) {}
+        if (!H_CLEAN) {
+          dbgW.style.display = "block";
+          dbgP.textContent = JSON.stringify(d.debug, null, 2);
+        } else {
+          dbgW.style.display = "none";
+          dbgP.textContent = "";
+        }
       } else {
         dbgW.style.display = "none";
         dbgP.textContent = "";
@@ -630,8 +728,12 @@
       setSt(
         "st-in",
         snap.ticket_id
-          ? ("API: pratica #" + snap.ticket_id + (snap.routed_department ? " · " + snap.routed_department : ""))
-          : "API: nessuna nuova pratica in questo turno (vedi pannello «Esito API»).",
+          ? (H_CLEAN
+              ? ("Pratica registrata n. " + snap.ticket_id + (snap.routed_department ? " · reparto " + snap.routed_department : ""))
+              : ("API: pratica #" + snap.ticket_id + (snap.routed_department ? " · " + snap.routed_department : "")))
+          : (H_CLEAN
+              ? "Nessuna nuova pratica in questo messaggio (vedi riepilogo a destra)."
+              : "API: nessuna nuova pratica in questo turno (vedi pannello «Esito API»)."),
         snap.ticket_id ? "ok" : ""
       );
       await refreshInbox();
@@ -666,8 +768,18 @@
     setSt("st-in", "Nuova sessione.", "");
   });
 
+  /** ID pratica per posta simulata: stesso snapshot del pannello «Esito API» (evita disallineo con solo localStorage). */
+  function inboxTicketIdPreferHandoff() {
+    var snap = loadIntakeHandoff();
+    if (snap && snap.ticket_id && /^\d+$/.test(String(snap.ticket_id))) {
+      return String(snap.ticket_id).trim();
+    }
+    var ls = localStorage.getItem(LS_LAST_TICKET);
+    return ls && /^\d+$/.test(ls) ? ls.trim() : "";
+  }
+
   async function refreshInbox() {
-    var tid = localStorage.getItem(LS_LAST_TICKET);
+    var tid = inboxTicketIdPreferHandoff();
     var box = document.getElementById("inbox-list");
     if (!tid) {
       box.innerHTML = "<span style='color:var(--muted)'>Nessun ticket_id salvato.</span>";
@@ -683,7 +795,14 @@
         return "<div style='margin-bottom:0.35rem;border-left:2px solid var(--border);padding-left:0.35rem'><strong>" + esc(m.subject) + "</strong><br/>" + esc(m.body || "") + "</div>";
       }).join("");
     } catch (e) {
-      box.innerHTML = "<span style='color:var(--err)'>" + esc(e.message) + "</span>";
+      var msg = e && e.message ? e.message : String(e);
+      var extra = "";
+      if (/non trovato|404/i.test(msg)) {
+        extra = H_CLEAN
+          ? " Se il riepilogo verde mostra ancora un numero pratica ma qui compare errore, prova «Nuova conversazione» o aggiorna dopo aver verificato il database (es. dopo uno svuotamento ticket)."
+          : " Disallineo tipico: snapshot handoff vs ID usato per /intake/simulated-mails, oppure pratica rimossa dal DB (truncate) mentre il browser conserva l’esito. Usa «Nuova conversazione» o allinea LS/handoff.";
+      }
+      box.innerHTML = "<span style='color:var(--err)'>" + esc(msg) + "</span>" + (extra ? "<br/><span style='color:var(--muted);font-size:0.78rem'>" + esc(extra.trim()) + "</span>" : "");
     }
   }
   document.getElementById("in-inbox-refresh").addEventListener("click", refreshInbox);
@@ -724,6 +843,15 @@
     var sel = document.getElementById("op-emp");
     var prev = sel.value;
     sel.innerHTML = "<option value=''>— Seleziona operatore —</option>";
+    if (!_validDept(dept)) {
+      var ph = document.createElement("option");
+      ph.value = "";
+      ph.disabled = true;
+      ph.textContent = "Scegli un reparto nel menu oppure clicca una pratica nell’elenco unificato";
+      sel.appendChild(ph);
+      updateOpMailPanel();
+      return;
+    }
     try {
       var d = await apiFetch("GET", "/departments/" + encodeURIComponent(dept) + "/employees");
       (d.employees || []).forEach(function (e) {
@@ -733,16 +861,20 @@
         sel.appendChild(o);
       });
       if (prev && Array.from(sel.options).some(function (o) { return o.value === prev; })) sel.value = prev;
+      syncOperatorToAssignee();
     } catch (err) {
       setSt("st-op", err.message, "err");
     }
+    updateOpMailPanel();
   }
 
-  function renderGlobalPendingHint(globalPayload, deptLabel, localCount, fetchError) {
+  function renderGlobalPendingHint(globalPayload, deptLabel, localCount, fetchError, isUnified) {
     var el = document.getElementById("op-pending-global");
     if (!el) return;
     if (fetchError) {
-      el.textContent = fetchError;
+      el.textContent = H_CLEAN
+        ? "Impossibile caricare il riepilogo delle richieste in attesa. Riprova tra poco."
+        : fetchError;
       return;
     }
     var tickets = (globalPayload && globalPayload.tickets) ? globalPayload.tickets : [];
@@ -754,20 +886,44 @@
       var d = t.department;
       if (d && Object.prototype.hasOwnProperty.call(counts, d)) counts[d]++;
     });
+    var summary = "vendita " + counts.vendita + ", acquisto " + counts.acquisto + ", manutenzione " + counts.manutenzione;
     if (total === 0) {
-      el.innerHTML =
-        "<strong>Registry centrale (<code>GET /pratiche/pending</code>):</strong> nessuna pratica in attesa in <em>nessun</em> reparto. " +
-        "Se in Richiesta l’«Esito API» non mostra un ID, l’intake non ha eseguito lo strumento di apertura pratica: " +
-        "<strong>non</strong> è un errore di passaggio verso pending — la riga non esiste nel DB.";
+      el.innerHTML = H_CLEAN
+        ? "<strong>Richieste in attesa in officina:</strong> nessuna al momento. Se nel riepilogo «Richiesta» non compare un numero di pratica, la segnalazione non è stata ancora registrata dal sistema."
+        : "<strong>Registry centrale (<code>GET /pratiche/pending</code>):</strong> nessuna pratica in attesa in <em>nessun</em> reparto. " +
+          "Se in Richiesta l’«Esito API» non mostra un ID, l’intake non ha eseguito lo strumento di apertura pratica: " +
+          "<strong>non</strong> è un errore di passaggio verso pending — la riga non esiste nel DB.";
       return;
     }
-    var summary = "vendita " + counts.vendita + ", acquisto " + counts.acquisto + ", manutenzione " + counts.manutenzione;
+    if (isUnified) {
+      if (H_CLEAN) {
+        el.innerHTML =
+          "<strong>In tutta l’officina</strong> ci sono <strong>" + total + "</strong> richieste ancora da prendere in carico (" + summary + "). " +
+          "Nell’elenco unificato sotto compaiono <strong>tutte</strong> le pratiche (tutti i reparti). Cliccando una riga si imposta il reparto per operatore e azioni.";
+      } else {
+        el.innerHTML =
+          "<strong>Registry:</strong> " + total + " in coda (" + summary + "). " +
+          "<strong>Vista unificata (<code>GET /pratiche</code>):</strong> elenco = tutte le pratiche; " +
+          "pratiche ancora <em>In coda</em> in questa lista: <strong>" + localCount + "</strong>.";
+      }
+      return;
+    }
+    if (H_CLEAN) {
+      el.innerHTML =
+        "<strong>In tutta l’officina</strong> ci sono <strong>" + total + "</strong> richieste ancora da prendere in carico (" + summary + "). " +
+        "Nel reparto <strong>" + esc(deptLabel) + "</strong> quelle ancora «In coda» sono <strong>" + localCount + "</strong>. " +
+        "L’elenco sotto riporta tutte le pratiche di questo reparto.";
+      if (localCount === 0 && total > 0) {
+        el.innerHTML += " <span style='color:var(--err)'>Qui non ce ne sono: prova «Tutti i reparti» o un altro reparto.</span>";
+      }
+      return;
+    }
     el.innerHTML =
       "<strong>Registry centrale:</strong> " + total + " in coda (" + summary + "). " +
       "Reparto «<strong>" + esc(deptLabel) + "</strong>»: pratiche ancora <em>In coda</em>: <strong>" + localCount + "</strong>. " +
       "L’elenco sotto mostra <strong>tutte</strong> le pratiche del reparto (ogni stato).";
     if (localCount === 0 && total > 0) {
-      el.innerHTML += " <span style='color:var(--err)'>Nessuna in coda qui: il totale è in altri reparti — cambia reparto.</span>";
+      el.innerHTML += " <span style='color:var(--err)'>Nessuna in coda qui: il totale è in altri reparti — prova vista unificata o altro reparto.</span>";
     }
   }
 
@@ -787,6 +943,43 @@
     return found;
   }
 
+  function updateOpResolveButton() {
+    var btn = document.getElementById("op-resolve");
+    var hint = document.getElementById("op-resolve-hint");
+    if (!btn) return;
+    var meta = getSelectedPraticaMeta();
+    var empId = document.getElementById("op-emp").value.trim();
+    var ok =
+      !!meta &&
+      meta.status === "in_progress" &&
+      !!empId &&
+      empIdsMatch(meta.assigned_to, empId);
+    btn.disabled = !ok;
+    if (hint) {
+      if (ok) {
+        hint.textContent = "";
+      } else if (!meta) {
+        hint.textContent = H_CLEAN
+          ? "Per chiudere: seleziona una pratica dall’elenco o dal menu «Pratica selezionata»."
+          : "Chiusura: seleziona una pratica (stato «In lavorazione» nel registry).";
+      } else if (meta.status !== "in_progress") {
+        hint.textContent = H_CLEAN
+          ? "Solo le pratiche «In lavorazione» (dopo «Prendi in carico») si possono chiudere. Stato attuale: " + statusLabelIt(meta.status) + "."
+          : "Resolve consentito solo con status in_progress (ora: " + esc(meta.status) + ").";
+      } else if (!empId) {
+        hint.textContent = H_CLEAN
+          ? "Scegli l’operatore nel menu: deve essere la persona a cui è assegnata la pratica (dopo il click sulla riga viene impostato automaticamente se possibile)."
+          : "Seleziona operatore = assigned_to della pratica (sync automatico dopo caricamento elenco).";
+      } else if (!empIdsMatch(meta.assigned_to, empId)) {
+        hint.textContent = H_CLEAN
+          ? "Operatore selezionato diverso dall’assegnatario: la pratica è di " + (meta.assigned_to_name || "un altro operatore") + ". Scegli il nome corretto nel menu Operatore."
+          : "assigned_to ≠ operatore selezionato. Allinea il menu Operatore a: " + esc(meta.assigned_to_name || meta.assigned_to || "?");
+      } else {
+        hint.textContent = "";
+      }
+    }
+  }
+
   function updateOpMailPanel() {
     var hint = document.getElementById("op-mail-hint");
     var btn = document.getElementById("op-mail-send");
@@ -795,29 +988,34 @@
     if (!meta) {
       hint.textContent = "Seleziona una pratica dall’elenco.";
       btn.disabled = true;
+      updateOpResolveButton();
       return;
     }
     if (meta.status === "pending_acceptance") {
       hint.textContent = "Pratica «In coda»: usa «Prendi in carico» (con te come operatore) prima di scrivere al richiedente.";
       btn.disabled = true;
+      updateOpResolveButton();
       return;
     }
     if (meta.status !== "in_progress") {
       hint.textContent = "Invio diretto consigliato per pratiche «In lavorazione». Stato attuale: " + statusLabelIt(meta.status) + ".";
       btn.disabled = true;
+      updateOpResolveButton();
       return;
     }
     if (!empId) {
       hint.textContent = "Seleziona l’operatore (deve essere l’assegnatario della pratica).";
       btn.disabled = true;
+      updateOpResolveButton();
       return;
     }
-    if (String(meta.assigned_to || "") !== empId) {
+    if (!empIdsMatch(meta.assigned_to, empId)) {
       hint.innerHTML =
         "Operatore selezionato diversa dall’assegnataria/o: <strong>" +
         esc(meta.assigned_to_name || "altro utente") +
         "</strong> ha la pratica. Cambia operatore o pratica.";
       btn.disabled = true;
+      updateOpResolveButton();
       return;
     }
     var em = (meta.customer_email || meta.source_email || "").trim();
@@ -825,10 +1023,12 @@
       ? "Destinatario: " + em + "."
       : "Email destinatario ricavata dal ticket di reparto.";
     btn.disabled = false;
+    updateOpResolveButton();
   }
 
   async function loadPraticheElenco() {
-    var dept = document.getElementById("op-dept").value;
+    var deptSel = document.getElementById("op-dept").value;
+    var isUnified = !_validDept(deptSel);
     var prev = document.getElementById("op-ticket").value;
     var elenco = document.getElementById("op-pratiche-elenco");
     var globalPayload = { tickets: [], total: 0 };
@@ -839,33 +1039,47 @@
       globalFetchError = "Impossibile leggere /pratiche/pending: " + (eg.message || String(eg));
     }
     try {
-      var lastT = localStorage.getItem(LS_LAST_TICKET);
-      if (lastT) {
-        try {
-          var loc0 = await apiFetch("GET", "/tickets/" + encodeURIComponent(lastT) + "/department");
-          if (
-            loc0.department &&
-            ["vendita", "acquisto", "manutenzione"].indexOf(loc0.department) >= 0 &&
-            loc0.department !== dept
-          ) {
-            document.getElementById("op-dept").value = loc0.department;
-            localStorage.setItem(LS_LAST_DEPT, loc0.department);
-            await loadEmployees();
-            dept = loc0.department;
-          }
-        } catch (e0) {}
+      var dept = deptSel;
+      if (_validDept(dept)) {
+        var lastT = localStorage.getItem(LS_LAST_TICKET);
+        if (lastT) {
+          try {
+            var loc0 = await apiFetch("GET", "/tickets/" + encodeURIComponent(lastT) + "/department");
+            if (
+              loc0.department &&
+              ["vendita", "acquisto", "manutenzione"].indexOf(loc0.department) >= 0 &&
+              loc0.department !== dept
+            ) {
+              document.getElementById("op-dept").value = loc0.department;
+              localStorage.setItem(LS_LAST_DEPT, loc0.department);
+              await loadEmployees();
+              dept = loc0.department;
+              isUnified = false;
+            }
+          } catch (e0) {}
+        }
       }
-      var d = await apiFetch("GET", "/departments/" + encodeURIComponent(dept) + "/pratiche");
+      var d = isUnified
+        ? await apiFetch("GET", "/pratiche")
+        : await apiFetch("GET", "/departments/" + encodeURIComponent(dept) + "/pratiche");
       var list = d.pratiche || [];
       __opPraticheList = list;
       var pendingHere = list.filter(function (p) {
         return p.status === "pending_acceptance";
       }).length;
-      renderGlobalPendingHint(globalPayload, dept, pendingHere, globalFetchError);
+      var hintLabel = isUnified ? "tutti i reparti" : dept;
+      renderGlobalPendingHint(globalPayload, hintLabel, pendingHere, globalFetchError, isUnified);
       if (!list.length) {
         elenco.innerHTML =
-          "<div style='padding:0.65rem;color:var(--muted)'>Nessuna pratica in questo reparto. " +
-          "Se il registry globale segnala code, prova un altro reparto.</div>";
+          "<div style='padding:0.65rem;color:var(--muted)'>" +
+          (isUnified
+            ? (H_CLEAN
+                ? "Nessuna pratica nel registry. Quando un richiedente completa l’intake, comparirà qui."
+                : "Nessuna riga in <code>GET /pratiche</code>.")
+            : (H_CLEAN
+                ? "Nessuna pratica in questo reparto. Usa «Tutti i reparti» o prova un altro reparto."
+                : "Nessuna pratica in questo reparto. Se il registry globale segnala code, prova vista unificata o altro reparto.")) +
+          "</div>";
         opTicketSelectFill([], null);
         opHighlightRow("");
         updateOpMailPanel();
@@ -878,11 +1092,14 @@
             : p.assigned_to
               ? "<span style='color:var(--muted)'>(id operatore)</span>"
               : "—";
-          var tit = esc((p.title || "").slice(0, 96));
-          var rq = esc((p.customer_name || "").slice(0, 48) || "—");
+          var tit = esc((p.title || "").slice(0, 72));
+          var rq = esc((p.customer_name || "").slice(0, 40) || "—");
+          var dep = esc((p.department || "—").slice(0, 14));
           return (
             "<div class='op-pr-row' role='button' tabindex='0' data-id='" +
             esc(p.id) +
+            "' data-dept='" +
+            esc(p.department || "") +
             "' data-status='" +
             esc(p.status) +
             "'>" +
@@ -891,6 +1108,9 @@
             "</code></span>" +
             "<span>" +
             esc(statusLabelIt(p.status)) +
+            "</span>" +
+            "<span>" +
+            dep +
             "</span>" +
             "<span>" +
             tit +
@@ -906,18 +1126,33 @@
         })
         .join("");
       elenco.querySelectorAll(".op-pr-row").forEach(function (row) {
-        function pick() {
+        async function pick() {
           var pid = row.getAttribute("data-id");
+          var rowDept = row.getAttribute("data-dept");
+          if (!document.getElementById("op-dept").value && _validDept(rowDept)) {
+            document.getElementById("op-dept").value = rowDept;
+            try {
+              localStorage.setItem(LS_LAST_DEPT, rowDept);
+            } catch (e1) {}
+            await loadEmployees();
+          }
           document.getElementById("op-ticket").value = pid;
           opHighlightRow(pid);
+          syncOperatorToAssignee();
           updateOpMailPanel();
-          opLoadThread();
+          await opLoadThread();
         }
-        row.addEventListener("click", pick);
+        row.addEventListener("click", function () {
+          pick().catch(function (e) {
+            setSt("st-op", e && e.message ? e.message : String(e), "err");
+          });
+        });
         row.addEventListener("keydown", function (e) {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            pick();
+            pick().catch(function (err) {
+              setSt("st-op", err && err.message ? err.message : String(err), "err");
+            });
           }
         });
       });
@@ -932,6 +1167,7 @@
           opHighlightRow(last);
         } else opHighlightRow(sel.value);
       }
+      syncOperatorToAssignee();
       updateOpMailPanel();
       return list.length;
     } catch (err) {
@@ -939,7 +1175,14 @@
       __opPraticheList = [];
       opTicketSelectFill([], null);
       try {
-        renderGlobalPendingHint(globalPayload, document.getElementById("op-dept").value, 0, globalFetchError);
+        var dFail = document.getElementById("op-dept").value;
+        renderGlobalPendingHint(
+          globalPayload,
+          _validDept(dFail) ? dFail : "tutti i reparti",
+          0,
+          globalFetchError,
+          !_validDept(dFail)
+        );
       } catch (_) {}
       opHighlightRow("");
       updateOpMailPanel();
@@ -950,9 +1193,7 @@
   async function opOnShow() {
     updateOperatorHandoffBanner();
     var ld = localStorage.getItem(LS_LAST_DEPT);
-    if (ld && _validDept(ld)) {
-      document.getElementById("op-dept").value = ld;
-    }
+    document.getElementById("op-dept").value = ld && _validDept(ld) ? ld : "";
     await loadEmployees();
     await loadPraticheElenco();
     opLoadThread();
@@ -967,9 +1208,25 @@
     loadPraticheElenco();
   });
   document.getElementById("op-ticket").addEventListener("change", function () {
-    opHighlightRow(document.getElementById("op-ticket").value);
-    updateOpMailPanel();
-    opLoadThread();
+    var sel = this;
+    (async function () {
+      if (!_validDept(document.getElementById("op-dept").value)) {
+        var meta = getSelectedPraticaMeta();
+        if (meta && _validDept(meta.department)) {
+          document.getElementById("op-dept").value = meta.department;
+          try {
+            localStorage.setItem(LS_LAST_DEPT, meta.department);
+          } catch (e) {}
+          await loadEmployees();
+        }
+      }
+      syncOperatorToAssignee();
+      opHighlightRow(sel.value);
+      updateOpMailPanel();
+      await opLoadThread();
+    })().catch(function (e) {
+      setSt("st-op", e && e.message ? e.message : String(e), "err");
+    });
   });
   document.getElementById("op-emp").addEventListener("change", function () {
     updateOpMailPanel();
@@ -977,11 +1234,19 @@
   });
 
   document.getElementById("op-accept").addEventListener("click", async function () {
-    var dept = document.getElementById("op-dept").value;
+    var eff = operatorEffectiveDept();
     var ticketId = document.getElementById("op-ticket").value.trim();
     var empId = document.getElementById("op-emp").value.trim();
     if (!ticketId || !empId) {
       setSt("st-op", "Seleziona pratica ed operatore.", "err");
+      return;
+    }
+    if (!_validDept(eff)) {
+      setSt(
+        "st-op",
+        "Imposta il reparto dal menu oppure seleziona la pratica dall’elenco unificato (click sulla riga imposta il reparto).",
+        "err"
+      );
       return;
     }
     var meta = getSelectedPraticaMeta();
@@ -991,7 +1256,7 @@
     }
     setSt("st-op", "Accettazione…", "load");
     try {
-      await apiFetch("POST", "/departments/" + encodeURIComponent(dept) + "/tickets/" + encodeURIComponent(ticketId) + "/accept", { employee_id: empId });
+      await apiFetch("POST", "/departments/" + encodeURIComponent(eff) + "/tickets/" + encodeURIComponent(ticketId) + "/accept", { employee_id: empId });
       setSt("st-op", "Presa in carico riuscita. Puoi scrivere al richiedente o usare la chat assistenza.", "ok");
       await loadPraticheElenco();
       opLoadThread();
@@ -1001,7 +1266,7 @@
   });
 
   document.getElementById("op-mail-send").addEventListener("click", async function () {
-    var dept = document.getElementById("op-dept").value;
+    var eff = operatorEffectiveDept();
     var praticaId = document.getElementById("op-ticket").value.trim();
     var empId = document.getElementById("op-emp").value.trim();
     var subject = document.getElementById("op-mail-subject").value.trim();
@@ -1010,10 +1275,14 @@
       setSt("st-op", "Compila oggetto, testo e verifica operatore/pratica.", "err");
       return;
     }
+    if (!_validDept(eff)) {
+      setSt("st-op", "Reparto non determinato: menu reparto o click su una riga dell’elenco.", "err");
+      return;
+    }
     setSt("st-op", "Invio mail simulata…", "load");
     document.getElementById("op-mail-send").disabled = true;
     try {
-      await apiFetch("POST", "/departments/" + encodeURIComponent(dept) + "/pratiche/" + encodeURIComponent(praticaId) + "/mail-richiedente", {
+      await apiFetch("POST", "/departments/" + encodeURIComponent(eff) + "/pratiche/" + encodeURIComponent(praticaId) + "/mail-richiedente", {
         employee_id: empId,
         subject: subject,
         body: bodyM
@@ -1028,8 +1297,42 @@
     }
   });
 
+  document.getElementById("op-resolve").addEventListener("click", async function () {
+    var eff = operatorEffectiveDept();
+    var praticaId = document.getElementById("op-ticket").value.trim();
+    var empId = document.getElementById("op-emp").value.trim();
+    if (!praticaId || !empId) {
+      setSt("st-op", "Seleziona pratica ed operatore (assegnatario).", "err");
+      return;
+    }
+    if (!_validDept(eff)) {
+      setSt("st-op", "Reparto non determinato per la chiusura.", "err");
+      return;
+    }
+    var meta = getSelectedPraticaMeta();
+    if (!meta || meta.status !== "in_progress" || String(meta.assigned_to || "") !== empId) {
+      setSt("st-op", "Chiusura consentita solo all’assegnatario con pratica «In lavorazione».", "err");
+      return;
+    }
+    setSt("st-op", "Chiusura pratica…", "load");
+    document.getElementById("op-resolve").disabled = true;
+    try {
+      await apiFetch("POST", "/departments/" + encodeURIComponent(eff) + "/pratiche/" + encodeURIComponent(praticaId) + "/resolve", {
+        employee_id: empId
+      });
+      setSt("st-op", "Pratica chiusa (risolta).", "ok");
+      await loadPraticheElenco();
+      await opLoadThread();
+    } catch (err) {
+      setSt("st-op", err.message, "err");
+    } finally {
+      updateOpMailPanel();
+      updateOpResolveButton();
+    }
+  });
+
   async function opLoadThread() {
-    var dept = document.getElementById("op-dept").value;
+    var dept = operatorEffectiveDept();
     var ticketId = document.getElementById("op-ticket").value.trim();
     var empId = document.getElementById("op-emp").value.trim();
     var chat = document.getElementById("chat-op");
@@ -1038,6 +1341,11 @@
     if (!ticketId || !empId) {
       chat.innerHTML = "";
       setSt("st-op", "Scegli pratica (menu) e operatore.", "");
+      return;
+    }
+    if (!_validDept(dept)) {
+      chat.innerHTML = "";
+      setSt("st-op", "Imposta il reparto (menu o click riga in vista unificata) per usare la chat assistenza.", "");
       return;
     }
     var key = assistStorageKey(dept, ticketId, empId);
@@ -1066,12 +1374,16 @@
   }
 
   document.getElementById("op-send").addEventListener("click", async function () {
-    var dept = document.getElementById("op-dept").value;
+    var dept = operatorEffectiveDept();
     var ticketId = document.getElementById("op-ticket").value.trim();
     var empId = document.getElementById("op-emp").value.trim();
     var message = document.getElementById("op-msg").value.trim();
     if (!ticketId || !empId || !message) {
       setSt("st-op", "Pratica, operatore e messaggio obbligatori.", "err");
+      return;
+    }
+    if (!_validDept(dept)) {
+      setSt("st-op", "Reparto non determinato: menu o click su una pratica nell’elenco unificato.", "err");
       return;
     }
     var key = assistStorageKey(dept, ticketId, empId);
@@ -1113,10 +1425,10 @@
   });
 
   document.getElementById("op-new-thread").addEventListener("click", function () {
-    var dept = document.getElementById("op-dept").value;
+    var dept = operatorEffectiveDept();
     var ticketId = document.getElementById("op-ticket").value.trim();
     var empId = document.getElementById("op-emp").value.trim();
-    if (ticketId && empId) localStorage.removeItem(assistStorageKey(dept, ticketId, empId));
+    if (ticketId && empId && _validDept(dept)) localStorage.removeItem(assistStorageKey(dept, ticketId, empId));
     document.getElementById("chat-op").innerHTML = "";
     document.getElementById("trace-op").innerHTML = "";
     setSt("st-op", "Thread locale azzerato per questa tripla.", "");
@@ -1145,7 +1457,7 @@
       var dbgRaw = sessionStorage.getItem(SS_LAST_INTAKE_DEBUG);
       var dbgW = document.getElementById("in-debug-wrap");
       var dbgP = document.getElementById("in-debug-pre");
-      if (dbgRaw) {
+      if (dbgRaw && !H_CLEAN) {
         var dbgObj = JSON.parse(dbgRaw);
         if (dbgObj && typeof dbgObj === "object") {
           dbgW.style.display = "block";
@@ -1158,7 +1470,8 @@
         await refreshInbox();
       } catch (e) {}
     }
-    document.getElementById("op-dept").value = localStorage.getItem(LS_LAST_DEPT) || "vendita";
+    var savedDept = localStorage.getItem(LS_LAST_DEPT);
+    document.getElementById("op-dept").value = _validDept(savedDept) ? savedDept : "";
     try {
       await loadEmployees();
       await loadPraticheElenco();
