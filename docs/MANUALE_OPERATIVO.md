@@ -43,6 +43,10 @@ Se la richiesta riguarda **contemporaneamente** veicolo e ricambi, il sistema si
 - Quando la pratica è stata **registrata**, nel pannello a destra (**Stato della pratica** in vista pulita, **Esito API** in vista tecnica) compaiono il **numero pratica** e il **reparto**; sono quelli da considerare attendibili, non eventuali numeri citati solo nel testo della chat.
 - In basso a destra puoi **aggiornare i messaggi** inviati dal reparto verso la tua email (simulazione): compaiono come nel mondo reale una volta che un operatore ti ha scritto.
 
+### Messaggi successivi sulla stessa pratica (limite attuale del POC)
+
+Dopo che il riepilogo a destra mostra già un **numero di pratica**, ogni nuovo messaggio inviato dalla tab **Richiesta** passa comunque dall’**assistente di intake**: non esiste oggi un vero flusso «rispondi a questa mail dal reparto» né un aggancio obbligato alla sola pratica già aperta. In pratica l’assistente può interpretare un aggiornamento (es. «il furgone è nel posteggio 12») come una **nuova richiesta** e far aprire una **seconda pratica**, con un nuovo numero. Per la demo conviene quindi concentrare i dettagli operativi **prima** che compaia il numero confermato nel pannello, oppure usare **Nuova conversazione** solo quando si vuole davvero partire da zero. In produzione andrebbe progettato un canale dedicato ai follow-up sulla stessa pratica.
+
 ### Esempio (richiesta acquisti)
 1. Nome `Laura`, cognome `Bianchi`, email `laura@fornitore.it`.
 2. Messaggio: *«Buongiorno, segnaliamo un errore IVA sulla fattura 45 riferita all’ordine 778. Siamo il reparto acquisti di Ricambi Nord.»*
@@ -51,7 +55,7 @@ Se la richiesta riguarda **contemporaneamente** veicolo e ricambi, il sistema si
 
 ### Esempio (officina / veicolo)
 1. Dati anagrafici compilati.
-2. *«Devo il tagliando per la mia VW Polo 2018.»* — se l’assistente chiede ancora qualcosa, di solito sarà il **chilometraggio attuale** (hai già l’anno nel testo).
+2. *«Devo fare il tagliando per la mia VW Polo 2018.»* — se l’assistente chiede ancora qualcosa, di solito sarà il **chilometraggio attuale** (hai già l’anno nel testo).
 3. Alternativa: *«Intervento sul furgone targato AB123CD: perdita olio, urgente per domani, 95.000 km.»* con anno o targa e km già chiari.
 4. Rispondi alle domande finché nel riepilogo compare numero pratica e reparto.
 

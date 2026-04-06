@@ -1,0 +1,89 @@
+[
+  {
+    "id": "tool_ok_pending_manutenzione",
+    "description": "ToolMessage valido con queue_status pending_acceptance — estrazione strict+loose",
+    "messages": [
+      {
+        "role": "tool",
+        "name": "route_and_open_ticket",
+        "content": "{\"helpdesk\": \"manutenzione\", \"ticket_id\": \"42\", \"queue_status\": \"pending_acceptance\"}"
+      }
+    ],
+    "expect_strict": { "department": "manutenzione", "ticket_id": "42" },
+    "expect_loose": { "department": "manutenzione", "ticket_id": "42" }
+  },
+  {
+    "id": "tool_ok_loose_only",
+    "description": "JSON senza queue_status — solo loose match",
+    "messages": [
+      {
+        "role": "tool",
+        "name": "route_and_open_ticket",
+        "content": "{\"helpdesk\": \"acquisto\", \"ticket_id\": \"7\", \"sector_ticket_id\": 7}"
+      }
+    ],
+    "expect_strict": null,
+    "expect_loose": { "department": "acquisto", "ticket_id": "7" }
+  },
+  {
+    "id": "double_open_last_wins",
+    "description": "Due aperture nello stesso turno: vince l'ultimo ToolMessage (no doppio ID nel risultato estratto)",
+    "messages": [
+      {
+        "role": "tool",
+        "name": "route_and_open_ticket",
+        "content": "{\"helpdesk\": \"manutenzione\", \"ticket_id\": \"1\", \"queue_status\": \"pending_acceptance\"}"
+      },
+      {
+        "role": "human",
+        "content": "Aggiornamento richiesta"
+      },
+      {
+        "role": "tool",
+        "name": "route_and_open_ticket",
+        "content": "{\"helpdesk\": \"manutenzione\", \"ticket_id\": \"2\", \"queue_status\": \"pending_acceptance\"}"
+      }
+    ],
+    "expect_strict": { "department": "manutenzione", "ticket_id": "2" },
+    "expect_loose": { "department": "manutenzione", "ticket_id": "2" }
+  },
+  {
+    "id": "fenced_json_block",
+    "description": "Risposta tool con JSON in fence markdown",
+    "messages": [
+      {
+        "role": "tool",
+        "name": "route_and_open_ticket",
+        "content": "```json\n{\"helpdesk\": \"vendita\", \"ticket_id\": \"99\", \"queue_status\": \"pending_acceptance\"}\n```"
+      }
+    ],
+    "expect_strict": { "department": "vendita", "ticket_id": "99" },
+    "expect_loose": { "department": "vendita", "ticket_id": "99" }
+  },
+  {
+    "id": "wrong_tool_ignored",
+    "description": "Altri tool non devono essere interpretati come apertura pratica",
+    "messages": [
+      {
+        "role": "tool",
+        "name": "list_helpdesks",
+        "content": "{\"reparti\": [\"vendita\"]}"
+      }
+    ],
+    "expect_strict": null,
+    "expect_loose": null
+  },
+  {
+    "id": "missing_ticket_id",
+    "description": "JSON incompleto — nessun routing",
+    "messages": [
+      {
+        "role": "tool",
+        "name": "route_and_open_ticket",
+        "content": "{\"helpdesk\": \"manutenzione\", \"queue_status\": \"pending_acceptance\"}"
+      }
+    ],
+    "expect_strict": null,
+    "expect_loose": null
+  }
+]

@@ -4,7 +4,8 @@ Prototipo (**POC**) che simula l’arrivo di una **richiesta unificata** (mail/c
 
 **Manuale operativo (utenti interfaccia, con esempi):** [docs/MANUALE_OPERATIVO.md](docs/MANUALE_OPERATIVO.md)  
 **Guida pratica step-by-step:** [docs/GUIDA_UTILIZZO_POC.md](docs/GUIDA_UTILIZZO_POC.md)  
-**Record di seed nei DB (traccia UUID):** [docs/DATI_DATABASE_POC.md](docs/DATI_DATABASE_POC.md)
+**Record di seed nei DB (traccia UUID):** [docs/DATI_DATABASE_POC.md](docs/DATI_DATABASE_POC.md)  
+**Sicurezza (chiave API opzionale, hardening):** [docs/SECURITY.md](docs/SECURITY.md)
 
 ---
 
@@ -160,6 +161,25 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Controlla che **uvicorn** sia avviato dalla **root del repo** e che la porta sia quella giusta (default **8000**, oppure `HELPER_PORT`).
 - Apri **`http://127.0.0.1:8000/ui/`** (o la porta usata). **`http://127.0.0.1:8000/health`**: se vedi `"database": false` o `"status": "degraded"`, Postgres non è raggiungibile: esegui **`docker compose up -d`** e verifica **`.env`**: le URL devono essere `postgresql://team:team@localhost:6433` … `6436` come in **`.env.example`** (se manca utente/password nel DSN, alcuni client usano l’utente di sistema Windows e la connessione fallisce).
 - Con il DB fermo, la **pagina statica** `/ui` si carica comunque; le chiamate API (intake, elenco pratiche, ecc.) rispondono **503** finché i container non sono pronti.
+
+### Test automatici
+
+**Non richiedono Docker** (default): `tests/conftest.py` punta i Postgres a una porta inesistente, l’app parte in modalità `degraded` e i test verificano `/health`, `/openapi.json`, il blocco **503** su `/intake/chat` e funzioni pure (UUID, parsing id, forma API pratiche, validatori Pydantic).
+
+**Valutazione intake (golden, senza LLM):** il file `eval/intake_golden_scenarios.json` elenca scenari sintetici (ToolMessage `route_and_open_ticket`); `tests/test_intake_golden_routing.py` verifica l’estrazione di `ticket_id` e reparto e il caso «doppia apertura nello stesso turno» (prevale **l’ultimo** tool valido). Solo golden routing:
+
+```powershell
+python -m pytest tests/test_intake_golden_routing.py -v
+```
+
+**Fallback intake lato server** (`INTAKE_FALLBACK_OPEN`): se il modello non invoca il tool ma il gate euristica è soddisfatto, l’API può aprire comunque la pratica. In quel caso nei log compare una riga **`WARNING`** `intake_fallback_open_applied` (con dominio email e anteprima titolo); i motivi per cui il fallback *non* scatta sono tracciati a livello **`DEBUG`** (`intake_fallback_open skipped: …`).
+
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+Per eseguire in futuro test **con** database reale (marker `integration`, da ampliare): imposta `HELPER_TEST_USE_REAL_DB=1` e avvia `docker compose`; le URL in `.env` devono essere raggiungibili.
 
 ---
 

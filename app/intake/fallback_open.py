@@ -23,6 +23,12 @@ log = logging.getLogger(__name__)
 TeamId = Literal["vendita", "acquisto", "manutenzione"]
 
 
+def _fallback_skip(reason: str) -> tuple[str | None, str | None]:
+    """Early exit con traccia diagnostica (abilitare livello DEBUG su app.intake.fallback_open)."""
+    log.debug("intake_fallback_open skipped: %s", reason)
+    return None, None
+
+
 def route_tool_message_seen(turn_msgs: list[BaseMessage]) -> bool:
     """True se compare un ToolMessage per route_and_open_ticket (anche in errore)."""
     return any(
@@ -102,19 +108,19 @@ async def try_intake_fallback_open(
     Solo se nel turno non è mai comparso ToolMessage route_and_open_ticket.
     """
     if route_tool_message_seen(turn_msgs):
-        return None, None
+        return _fallback_skip("route_tool_message_seen_in_turn")
 
     raw = _last_human_raw(full_msgs)
     if not raw:
-        return None, None
+        return _fallback_skip("no_human_message")
 
     nome, cognome, em = intake_contact_from_human_raw(raw)
     if not em or not nome or not cognome:
-        return None, None
+        return _fallback_skip("contact_triplet_incomplete")
 
     thread_t = _human_thread_text(full_msgs)
     if not operational_gate_heuristic(thread_t):
-        return None, None
+        return _fallback_skip("operational_gate_heuristic_false")
 
     sender_name = f"{nome.strip()} {cognome.strip()}".strip()
     summary_body = strip_intake_contact_block(raw).strip() or thread_t.strip()
@@ -146,10 +152,14 @@ async def try_intake_fallback_open(
     tid = result.get("ticket_id")
     dept = result.get("helpdesk")
     if tid and dept:
+        domain = em.split("@")[-1].strip() if "@" in em else ""
         log.warning(
-            "intake_fallback_open: apertura server-side helpdesk=%s ticket_id=%s",
+            "intake_fallback_open_applied helpdesk=%s ticket_id=%s sender_domain=%s "
+            "title_preview=%r intake_fallback=True",
             dept,
             tid,
+            domain,
+            title[:120],
         )
         return str(dept).strip(), str(tid).strip()
-    return None, None
+    return _fallback_skip("execute_route_and_open_ticket_empty_result")

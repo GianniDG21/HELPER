@@ -1,11 +1,13 @@
 from functools import lru_cache
 from typing import Literal, Self
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 TeamId = Literal["vendita", "acquisto", "manutenzione"]
 LlmProvider = Literal["groq", "ollama"]
+
+TEAM_IDS: tuple[TeamId, ...] = ("vendita", "acquisto", "manutenzione")
 
 
 class Settings(BaseSettings):
@@ -33,6 +35,17 @@ class Settings(BaseSettings):
     debug_intake: bool = False
     # Se il modello non invoca route_and_open_ticket (o l’API non estrae tid), prova apertura lato server
     intake_fallback_open: bool = True
+    # Se valorizzata: le API (eccetto health, /, /ui, documentazione) richiedono lo stesso valore in
+    # `X-API-Key` o `Authorization: Bearer <valore>`. Variabile d'ambiente: HELPER_API_KEY.
+    api_key: str | None = Field(default=None, validation_alias="HELPER_API_KEY")
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _empty_api_key_none(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s if s else None
 
     @field_validator("debug_intake", mode="before")
     @classmethod
