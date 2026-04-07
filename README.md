@@ -2,6 +2,8 @@
 
 Prototipo (**POC**) che simula l’arrivo di una **richiesta unificata** (mail/chat), lo **smistamento verso il reparto corretto** (tre database Postgres indipendenti) e la **chat operativa** per il dipendente dopo la **presa in carico** della pratica.
 
+Il canale utente è una chat web, ma il workflow supporta la **conversione chat -> email simulata**: il dipendente, una volta assegnatario della pratica, può inviare un messaggio al richiedente tramite endpoint dedicato e il richiedente lo visualizza nella sezione inbox della tab Richiesta (simulazione del canale email).
+
 **Manuale operativo (utenti interfaccia, con esempi):** [docs/MANUALE_OPERATIVO.md](docs/MANUALE_OPERATIVO.md)  
 **Guida pratica step-by-step:** [docs/GUIDA_UTILIZZO_POC.md](docs/GUIDA_UTILIZZO_POC.md)  
 **Record di seed nei DB (traccia UUID):** [docs/DATI_DATABASE_POC.md](docs/DATI_DATABASE_POC.md)  
