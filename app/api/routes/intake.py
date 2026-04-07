@@ -30,6 +30,24 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/intake", tags=["intake"])
 
 
+def _pick_intake_graph(request: Request):
+    req_provider = (request.headers.get("x-llm-provider") or "").strip().lower()
+    available = list(getattr(request.app.state, "available_llm_providers", []))
+    selected = req_provider or getattr(request.app.state, "llm_default_provider", "ollama")
+    if selected not in available:
+        if req_provider:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Provider LLM non disponibile: {selected}. Disponibili: {', '.join(available)}",
+            )
+        selected = available[0] if available else "ollama"
+    graphs = getattr(request.app.state, "intake_graphs", {})
+    graph = graphs.get(selected) or getattr(request.app.state, "intake_graph", None)
+    if graph is None:
+        raise HTTPException(status_code=503, detail="Grafo intake non disponibile")
+    return selected, graph
+
+
 @router.get("/simulated-mails")
 async def intake_simulated_mails(
     ticket_id: str = Query(..., min_length=1, max_length=19, pattern=TICKET_ID_STR_PATTERN),
@@ -57,7 +75,7 @@ async def get_intake_thread(
     request: Request,
     thread_id: str = Query(..., min_length=4, max_length=128),
 ):
-    graph = request.app.state.intake_graph
+    _, graph = _pick_intake_graph(request)
     cfg = {"configurable": {"thread_id": intake_thread_ckpt(thread_id)}}
     snap = await graph.aget_state(cfg)
     raw = list(snap.values.get("messages", [])) if snap.values else []
@@ -73,7 +91,7 @@ async def intake_chat(request: Request, body: IntakeChatRequest):
     client_thread_id = body.thread_id or str(uuid.uuid4())
     ckpt = intake_thread_ckpt(client_thread_id)
     config: dict = {"configurable": {"thread_id": ckpt}, "recursion_limit": 50}
-    graph = request.app.state.intake_graph
+    selected_provider, graph = _pick_intake_graph(request)
     snapshot = await graph.aget_state(config)
     prev_n = len(snapshot.values.get("messages", [])) if snapshot.values else 0
 
@@ -105,8 +123,9 @@ async def intake_chat(request: Request, body: IntakeChatRequest):
             intake_fallback_applied = True
     n_tools = sum(1 for m in turn_msgs if isinstance(m, ToolMessage))
     log.info(
-        "intake_result thread=%s tools_in_turn=%s ticket_id=%s dept=%s fallback=%s",
+        "intake_result thread=%s provider=%s tools_in_turn=%s ticket_id=%s dept=%s fallback=%s",
         client_thread_id,
+        selected_provider,
         n_tools,
         ticket_uuid,
         dept,

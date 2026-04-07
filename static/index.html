@@ -150,6 +150,8 @@
     .helper-clean .clean-only.flex-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
     .ui-switch { margin-left: auto; font-size: 0.78rem; }
     .ui-switch a { color: var(--accent); }
+    .model-switch { display:flex; align-items:center; gap:0.45rem; font-size:0.78rem; color:var(--muted); }
+    .model-switch select { max-width: 180px; font-size:0.8rem; padding:0.35rem 0.5rem; }
     .clean-hint { margin: 0 1rem 0.75rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
   </style>
 </head>
@@ -162,6 +164,13 @@
     </div>
     <p class="hint tech-only">API: intake <code>POST /intake/chat</code>; elenco pratiche reparto <code>GET /departments/{dept}/pratiche</code>; coda globale <code>GET /pratiche/pending</code>; presa in carico <code>POST …/accept</code>; mail al richiedente <code>POST …/pratiche/{id}/mail-richiedente</code>; assist <code>POST /assist/chat</code>.</p>
     <p class="hint clean-only">Compila i tuoi dati, descrivi la richiesta e segui l’assistente. In «Dipendente» il reparto gestisce le pratiche e può risponderti.</p>
+    <div class="model-switch">
+      <label for="llm-provider" style="margin:0;text-transform:none;letter-spacing:0;color:var(--text)">Modello AI</label>
+      <select id="llm-provider">
+        <option value="ollama">Locale (Ollama)</option>
+        <option value="groq">Remoto (Groq)</option>
+      </select>
+    </div>
     <p class="ui-switch tech-only"><a href="index.html?clean=1">Vista pulita</a> (senza dettagli tecnici)</p>
     <p class="ui-switch clean-only"><a href="index.html">Vista tecnica</a> (per sviluppo e test API)</p>
   </header>
@@ -235,7 +244,7 @@
                 <option value="">Tutti i reparti (vista unificata)</option>
                 <option value="vendita">vendita</option>
                 <option value="acquisto">acquisto</option>
-                <option value="manutenzione">manutenzione</option>
+                <option value="manutenzione">officina</option>
               </select>
             </div>
             <div class="field">

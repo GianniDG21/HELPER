@@ -26,6 +26,24 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/assist", tags=["assist"])
 
 
+def _pick_assist_graph(request: Request):
+    req_provider = (request.headers.get("x-llm-provider") or "").strip().lower()
+    available = list(getattr(request.app.state, "available_llm_providers", []))
+    selected = req_provider or getattr(request.app.state, "llm_default_provider", "ollama")
+    if selected not in available:
+        if req_provider:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Provider LLM non disponibile: {selected}. Disponibili: {', '.join(available)}",
+            )
+        selected = available[0] if available else "ollama"
+    graphs = getattr(request.app.state, "assist_graphs", {})
+    graph = graphs.get(selected) or getattr(request.app.state, "assist_graph", None)
+    if graph is None:
+        raise HTTPException(status_code=503, detail="Grafo assist non disponibile")
+    return selected, graph
+
+
 @router.get("/thread", response_model=ThreadTranscriptResponse)
 async def get_assist_thread(
     request: Request,
@@ -34,7 +52,7 @@ async def get_assist_thread(
     employee_id: str = Query(...),
     thread_id: str = Query(..., min_length=4, max_length=128),
 ):
-    graph = request.app.state.assist_graph
+    _, graph = _pick_assist_graph(request)
     cfg = {
         "configurable": {
             "thread_id": assist_thread_ckpt(
@@ -92,7 +110,7 @@ async def assist_chat(request: Request, body: AssistChatRequest):
         )
         human = HumanMessage(content=prefix + body.message)
 
-        graph = request.app.state.assist_graph
+        selected_provider, graph = _pick_assist_graph(request)
         cfg: dict = {
             "configurable": {
                 "thread_id": assist_thread_ckpt(
@@ -108,8 +126,9 @@ async def assist_chat(request: Request, body: AssistChatRequest):
         prev_n = len(snapshot.values.get("messages", [])) if snapshot.values else 0
 
         log.info(
-            "assist dept=%s pratica=%s sector_ticket=%s emp=%s thread=%s",
+            "assist dept=%s provider=%s pratica=%s sector_ticket=%s emp=%s thread=%s",
             body.department,
+            selected_provider,
             public_id,
             sector_id,
             body.employee_id,

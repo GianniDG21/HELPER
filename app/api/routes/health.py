@@ -8,6 +8,10 @@ router = APIRouter(tags=["health"])
 async def health(request: Request):
     ok = bool(getattr(request.app.state, "db_available", False))
     body: dict = {"status": "ok" if ok else "degraded", "database": ok}
+    body["llm_default_provider"] = getattr(request.app.state, "llm_default_provider", "ollama")
+    body["llm_available_providers"] = list(
+        getattr(request.app.state, "available_llm_providers", [])
+    )
     if not ok and getattr(request.app.state, "db_startup_error", None):
         body["database_error"] = (request.app.state.db_startup_error or "")[:500]
     return body

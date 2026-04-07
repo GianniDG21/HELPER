@@ -28,7 +28,7 @@ Allineato al **gate apertura pratica** dell’assistente (nessun ticket finché 
 | Area | Cosa deve risultare chiaro |
 |------|----------------------------|
 | **Contatti** | **Email** (indirizzo valido, nel modulo o nel testo). **Nome e cognome** del referente (nel modulo in alto **oppure** scritti nel messaggio — non bastano da soli nome azienda o ragione sociale da anagrafica). |
-| **Veicolo / officina** (tagliando, revisione, guasto, intervento, ecc.) | **Chilometraggio attuale** e **identificativo del veicolo**: **targa** (es. formato italiano) **oppure** modello con **anno** (es. *Polo 2018*). Se nel messaggio c’è già targa o anno/modello, l’assistente chiederà in genere **solo i km**; se ci sono già i km, chiederà **solo** targa o anno/modello. |
+| **Veicolo / officina** (tagliando, revisione, guasto, intervento, ecc.) | **Chilometraggio attuale** e **identificativo del veicolo**: **targa** in formato italiano **AA123BB** (2 lettere, 3 cifre, 2 lettere) **oppure** modello con **anno** (es. *Polo 2018*). Se nel messaggio c’è già targa o anno/modello, l’assistente chiederà in genere **solo i km**; se ci sono già i km, chiederà **solo** targa o anno/modello. |
 | **Ricambi / materiale** | Oltre a descrizione o codice (se servono), la **quantità** (numero di pezzi). Se manca solo quella, ti verrà chiesta **solo** la quantità. |
 | **Ufficio / B2B** (fatture, ordini, segnalazioni «per conto di…») | **Non** serve una generica «autorizzazione» a inoltrare: bastano contatti (sopra) e una **descrizione sufficiente** del problema o della pratica amministrativa. |
 
@@ -40,6 +40,7 @@ Se la richiesta riguarda **contemporaneamente** veicolo e ricambi, il sistema si
 
 ### Cosa aspettarti
 - L’assistente può fare **una domanda alla volta** per completare i **dati utili al reparto** (es. per un’auto: **chilometraggio** se hai già indicato anno o modello; per ricambi: **quantità**). **Non** ti chiederà una generica «autorizzazione» per aprire il ticket: il messaggio che invii è già la richiesta.
+- Se i dati operativi minimi non sono completi, il backend blocca l’apertura pratica anche se il modello tenta di aprirla (guardia server-side).
 - Quando la pratica è stata **registrata**, nel pannello a destra (**Stato della pratica** in vista pulita, **Esito API** in vista tecnica) compaiono il **numero pratica** e il **reparto**; sono quelli da considerare attendibili, non eventuali numeri citati solo nel testo della chat.
 - In basso a destra puoi **aggiornare i messaggi** inviati dal reparto verso la tua email (simulazione): compaiono come nel mondo reale una volta che un operatore ti ha scritto.
 
@@ -64,7 +65,7 @@ Dopo che il riepilogo a destra mostra già un **numero di pratica**, ogni nuovo 
 ## Ruolo 2 — Dipendente (tab **Dipendente**)
 
 ### Preparazione
-1. **Reparto** (opzionale come filtro): puoi lasciare **«Tutti i reparti (vista unificata)»** per un unico elenco di tutte le pratiche; oppure filtrare per **vendita**, **acquisto** o **manutenzione**.
+1. **Reparto** (opzionale come filtro): puoi lasciare **«Tutti i reparti (vista unificata)»** per un unico elenco di tutte le pratiche; oppure filtrare per **vendita**, **acquisto** o **officina** (chiave API: `manutenzione`).
 2. Scegli **te stesso** nel menu **Operatore** (compare dopo aver scelto un reparto, oppure dopo aver cliccato una riga in vista unificata — così il menu si aggiorna sul reparto della pratica).
 
 ### Elenco pratiche
@@ -79,7 +80,8 @@ Dopo che il riepilogo a destra mostra già un **numero di pratica**, ogni nuovo 
 
 ### Scrivere al richiedente
 - Dopo la presa in carico, se la pratica è **tua**, il blocco **Messaggio al richiedente** si abilita.
-- Compila **oggetto** e **testo**; **Invio** invia (come il pulsante). Il richiedente vede il messaggio nel tab Richiesta, area messaggi dal reparto.
+- L’**oggetto** viene precompilato automaticamente dal contesto pratica selezionata; puoi modificarlo liberamente.
+- Compila **testo**; **Invio** invia (come il pulsante). Il richiedente vede il messaggio nel tab Richiesta, area messaggi dal reparto.
 - Funziona solo se sei l’**assegnatario** della pratica selezionata.
 
 ### Chiudere la pratica

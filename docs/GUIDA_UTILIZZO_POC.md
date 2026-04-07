@@ -6,11 +6,11 @@ Per una versione **solo operativa** (senza dettagli tecnici in interfaccia) vedi
 
 ## Cosa dimostra la POC
 
-- Un **canale unico** (messaggio tipo email) arriva alla centrale: l’agente **capisce la richiesta**, interroga **anagrafica** e **elenchi reparti**, e **apre la pratica** dopo **email**, **nome referente** e i **dati operativi minimi** (es. **anno e km** per interventi su veicolo, **quantità** per ricambi; per richieste d’ufficio basta una descrizione sufficiente). **Non** richiede una generica «autorizzazione» all’apertura del ticket.
+- Un **canale unico** (messaggio tipo email) arriva alla centrale: l’agente **capisce la richiesta**, interroga **anagrafica** e **elenchi reparti**, e apre la pratica dopo **email**, **nome referente** e i **dati operativi minimi** (es. **anno e km** per interventi su veicolo, **quantità** per ricambi; per richieste d’ufficio basta una descrizione sufficiente). È presente una **guardia server-side**: senza dati minimi il ticket non viene aperto anche se il modello prova a chiamare il tool.
 - La pratica resta in **coda “in attesa”** finché un **dipendente non la prende in carico**.
 - Solo dopo la presa in carico, il dipendente può **chattare** con un assistente che legge/aggiorna i dati **solo del suo reparto**.
 
-Non è un prodotto finito: memoria conversazione in RAM, un solo modello LLM (default **Ollama** locale o **Groq**), niente autenticazione utente.
+Non è un prodotto finito: memoria conversazione in RAM, niente autenticazione utente. In UI puoi scegliere il modello **Locale (Ollama)** o **Remoto (Groq)** dall’header.
 
 ---
 
@@ -46,6 +46,7 @@ Il pulsante **Pulisci** (tab Richiesta) azzera la conversazione salvata nel brow
 2. Scegli **Dipendente** dal menu a tendina (nomi caricati da `GET /departments/{reparto}/employees`). L’assegnazione la confermi con **Prendi in carico**.
 3. Clicca **Prendi in carico**: se va a buon fine, lo stato della pratica diventa adatto alla chat.
 4. Usa la **Chat dipendente** per domande operative (riepilogo ticket, clienti, aggiornamento stato, ecc.).
+5. Nel blocco **Messaggio al richiedente**, l’oggetto viene proposto automaticamente in base al contesto pratica selezionata (modificabile).
 
 Anche qui è disponibile il pannello **dietro le quinte** per l’ultimo turno.
 
@@ -69,7 +70,7 @@ L’intake collega il **dominio email** alle aziende seed. Esempi (estratto conc
 
 | Dominio tipico | Reparto suggerito (indicativo) |
 |----------------|--------------------------------|
-| `trasportinord.it` | manutenzione |
+| `trasportinord.it` | officina (`manutenzione` lato API) |
 | `disbrigo.it` | acquisto |
 | `garino-officina.it` / `email.it` | vendita |
 
@@ -81,7 +82,7 @@ Se il dominio non è in anagrafica, lo smistamento si basa comunque sul **testo*
 
 Usare **nel tab Dipendente** il campo «Tu (dipendente)». Elenco completo nella tabella **Dipendenti di esempio** nel [README](../README.md).
 
-Regola: il dipendente deve **appartenere allo stesso reparto** del database su cui è stata aperta la pratica (vendita / acquisto / manutenzione).
+Regola: il dipendente deve **appartenere allo stesso reparto** del database su cui è stata aperta la pratica (vendita / acquisto / officina, chiave API `manutenzione`).
 
 ---
 
@@ -108,6 +109,8 @@ La documentazione interattiva OpenAPI è su **http://127.0.0.1:8000/docs** con l
 - **Checkpointer in memoria** (`MemorySaver`): al riavvio del processo `uvicorn` le conversazioni LangGraph si perdono; i **ticket su Postgres** restano.
 - Nessun login: chiunque raggiunga l’URL può chiamare l’API (adatta solo a rete locale / demo).
 - Rate limit e disponibilità modelli dipendono da **Groq** e dalla chiave API.
+- Lo smistamento usa la chiave reparto `manutenzione` lato API/DB, ma in UI è mostrato come **officina**.
+- I titoli pratica intake sono normalizzati in formato coerente: **`[Reparto] Riassunto breve`** (derivato dal contesto completo, non dal primo messaggio).
 
 ---
 
@@ -120,4 +123,25 @@ La documentazione interattiva OpenAPI è su **http://127.0.0.1:8000/docs** con l
 
 
 ## Prompt iniziali d'esempio
--Buongiorno, stiamo vendendo l'auto FR668AN, solo che non riesco a inserirlo nel gestionale perchè mi da un errore
+
+Copiali nel tab **Richiesta** dopo aver compilato nome/cognome/email.
+
+- **Officina (completo, apre pratica):**  
+  `Buongiorno, ho un problema al furgone Ducato 2019 targa AB123CD, 98000 km: perdita olio e rumore freni anteriori.`
+
+- **Officina (incompleto, deve chiedere dettaglio):**  
+  `Buongiorno, ho un problema con il furgone.`  
+  (atteso: richiesta di km e identificativo veicolo)
+
+- **Ricambi (completo, apre pratica):**  
+  `Ci servono 12 filtri olio codice FO-778 per la flotta, consegna urgente entro venerdì.`
+
+- **Ricambi (incompleto, deve chiedere quantità):**  
+  `Dobbiamo ordinare filtri olio codice FO-778.`  
+  (atteso: richiesta quantità)
+
+- **Acquisto/Ufficio (B2B):**  
+  `Segnalo incongruenza IVA sulla fattura 45 relativa all'ordine 998; serve verifica amministrativa con il fornitore.`
+
+- **Vendita:**  
+  `Richiedo supporto commerciale per preventivo rinnovo flotta aziendale con 6 veicoli, consegna Q3.`

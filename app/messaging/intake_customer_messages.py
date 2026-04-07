@@ -13,7 +13,7 @@ _DEFAULT_CLOSING = "Un operatore la prenderà in carico al più presto."
 _DEPT_LABEL: dict[str, str] = {
     "vendita": "vendita",
     "acquisto": "acquisto",
-    "manutenzione": "manutenzione",
+    "manutenzione": "officina",
 }
 
 

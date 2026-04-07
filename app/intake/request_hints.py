@@ -22,6 +22,7 @@ _YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 
 # Targa italiana tipica: AA123BB (opz. spazi); utile come identificativo veicolo se manca l’anno
 _IT_PLATE_RE = re.compile(r"(?i)\b([A-Z]{2}\s?\d{3}\s?[A-Z]{2})\b")
+_PLATE_KEYWORD_RE = re.compile(r"(?is)\btarg(?:a|he)\b")
 
 _MILEAGE_RE = re.compile(
     r"(?is)(\d{1,3}(?:[.\s]\d{3})+|\d{4,7})\s*(?:km\b|k\s*m\b)|"
@@ -43,6 +44,14 @@ def has_vehicle_year(t: str) -> bool:
 
 def has_vehicle_plate(t: str) -> bool:
     return bool(_IT_PLATE_RE.search(t))
+
+
+def has_invalid_vehicle_plate_format(t: str) -> bool:
+    """
+    Se viene citata esplicitamente la targa ma non compare un formato valido AA123BB,
+    il dato operativo e da considerare non valido.
+    """
+    return bool(_PLATE_KEYWORD_RE.search(t)) and not has_vehicle_plate(t)
 
 
 def has_vehicle_identity(t: str) -> bool:
@@ -75,12 +84,18 @@ def operational_gate_heuristic(thread_text: str) -> bool:
     p = parts_intent(t)
     if v and p:
         return (
+            not has_invalid_vehicle_plate_format(t)
+            and
             has_mileage(t)
             and has_vehicle_identity(t)
             and has_part_quantity(t)
         )
     if v:
-        return has_mileage(t) and has_vehicle_identity(t)
+        return (
+            not has_invalid_vehicle_plate_format(t)
+            and has_mileage(t)
+            and has_vehicle_identity(t)
+        )
     if p:
         return has_part_quantity(t)
     return True
@@ -96,10 +111,16 @@ def missing_intake_fallback_reply(thread_text: str) -> str:
     p = parts_intent(t)
     hy = has_vehicle_year(t)
     hp = has_vehicle_plate(t)
+    hip = has_invalid_vehicle_plate_format(t)
     hid = has_vehicle_identity(t)
     hm = has_mileage(t)
     hq = has_part_quantity(t)
 
+    if v and hip:
+        return (
+            "Per favore indica la targa in formato standard italiano: due lettere, tre cifre, due lettere "
+            "(es. AA123BB)."
+        )
     if v and hid and not hm:
         return (
             "Grazie per i dettagli sul veicolo. Per completare la richiesta in officina, "

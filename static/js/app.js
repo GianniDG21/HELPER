@@ -13,6 +13,7 @@
   const LS_LAST_TICKET = "helper_last_ticket";
   const LS_LAST_DEPT = "helper_last_dept";
   const LS_CONTACT = "helper_contact_json";
+  const LS_LLM_PROVIDER = "helper_llm_provider";
   /** Ultimo turno intake: snapshot da POST /intake/chat (passaggio verso operatore). */
   const SS_INTAKE_HANDOFF = "helper_intake_handoff_v1";
   const SS_LAST_INTAKE_TRACE = "helper_last_intake_trace_v1";
@@ -22,8 +23,20 @@
     return "helper_asst_" + dept + "_" + ticketId + "_" + empId;
   }
 
+  function selectedLlmProvider() {
+    var el = document.getElementById("llm-provider");
+    if (el && el.value) return el.value;
+    var saved = (localStorage.getItem(LS_LLM_PROVIDER) || "").trim().toLowerCase();
+    return saved || "ollama";
+  }
+
+  function saveLlmProvider(provider) {
+    try { localStorage.setItem(LS_LLM_PROVIDER, provider); } catch (e) {}
+  }
+
   async function apiFetch(method, url, jsonBody) {
     const opts = { method, headers: {} };
+    opts.headers["X-LLM-Provider"] = selectedLlmProvider();
     if (jsonBody !== undefined) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(jsonBody);
@@ -152,8 +165,60 @@
     e.className = "status" + (cls ? " " + cls : "");
   }
 
+  function wireLlmProviderSwitch(healthPayload) {
+    var sel = document.getElementById("llm-provider");
+    if (!sel) return;
+    var available = Array.isArray(healthPayload && healthPayload.llm_available_providers)
+      ? healthPayload.llm_available_providers
+      : [];
+    var fallback = (healthPayload && healthPayload.llm_default_provider) || "ollama";
+    var saved = (localStorage.getItem(LS_LLM_PROVIDER) || "").trim().toLowerCase();
+    var pick = saved || fallback;
+    Array.from(sel.options).forEach(function (o) {
+      o.disabled = !!available.length && available.indexOf(o.value) < 0;
+    });
+    if (available.length && available.indexOf(pick) < 0) pick = fallback;
+    if (available.length && available.indexOf(pick) < 0) pick = available[0];
+    sel.value = pick;
+    saveLlmProvider(pick);
+    sel.addEventListener("change", function () {
+      var v = sel.value;
+      saveLlmProvider(v);
+      setSt("st-in", "Modello AI impostato su: " + (v === "groq" ? "Remoto (Groq)" : "Locale (Ollama)"), "ok");
+      setSt("st-op", "Modello AI impostato su: " + (v === "groq" ? "Remoto (Groq)" : "Locale (Ollama)"), "ok");
+    });
+  }
+
   function _validDept(d) {
     return d && ["vendita", "acquisto", "manutenzione"].indexOf(d) >= 0;
+  }
+
+  function deptLabel(d) {
+    var x = String(d || "").trim().toLowerCase();
+    if (x === "manutenzione") return "officina";
+    if (x === "acquisto") return "acquisto";
+    if (x === "vendita") return "vendita";
+    return String(d || "");
+  }
+
+  function normalizeDeptSelectLabels() {
+    var sel = document.getElementById("op-dept");
+    if (!sel) return;
+    Array.from(sel.options).forEach(function (o) {
+      if (String(o.value || "").trim().toLowerCase() === "manutenzione") {
+        o.textContent = "officina";
+      }
+    });
+  }
+
+  function contextMailSubject(meta) {
+    if (!meta) return "";
+    var t = String(meta.title || "").trim();
+    if (!t) return "Aggiornamento pratica #" + String(meta.id || "").trim();
+    t = t.replace(/^\s*\[[^\]]+\]\s*/g, "");
+    t = t.replace(/\s+/g, " ").trim();
+    if (t.length > 72) t = t.slice(0, 72).trim();
+    return "Aggiornamento pratica #" + String(meta.id || "").trim() + " — " + t;
   }
 
   /** Confronto UUID case-insensitive (select vs API). */
@@ -280,7 +345,7 @@
     if (snap.ticket_id && snap.routed_department) {
       wrap.className = "api-outcome ok";
       body.innerHTML =
-        "Pratica registrata: <strong>#" + esc(snap.ticket_id) + "</strong> · reparto <strong>" + esc(snap.routed_department) + "</strong>" +
+        "Pratica registrata: <strong>#" + esc(snap.ticket_id) + "</strong> · reparto <strong>" + esc(deptLabel(snap.routed_department)) + "</strong>" +
         (!H_CLEAN && snap.thread_id
           ? "<br/><span style='color:var(--muted);font-size:0.72rem'>thread " + esc(snap.thread_id.slice(0, 8)) + "…</span>"
           : "");
@@ -306,8 +371,8 @@
     if (snap && snap.ticket_id && snap.routed_department) {
       el.className = "op-banner is-on";
       el.innerHTML = H_CLEAN
-        ? "Ultima richiesta registrata: pratica <strong>#" + esc(snap.ticket_id) + "</strong>, reparto <strong>" + esc(snap.routed_department) + "</strong>. Apri il tab Dipendente e aggiorna l’elenco."
-        : "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> · <strong>" + esc(snap.routed_department) +
+        ? "Ultima richiesta registrata: pratica <strong>#" + esc(snap.ticket_id) + "</strong>, reparto <strong>" + esc(deptLabel(snap.routed_department)) + "</strong>. Apri il tab Dipendente e aggiorna l’elenco."
+        : "Ultima pratica da intake: <strong>#" + esc(snap.ticket_id) + "</strong> · <strong>" + esc(deptLabel(snap.routed_department)) +
           "</strong> — usa <strong>Apri tab Dipendente e allinea elenco</strong> dalla Richiesta oppure <strong>Aggiorna elenco pratiche</strong> qui.";
       return;
     }
@@ -433,8 +498,8 @@
         "st-in",
         snap.ticket_id
           ? (H_CLEAN
-              ? ("Pratica registrata n. " + snap.ticket_id + (snap.routed_department ? " · reparto " + snap.routed_department : ""))
-              : ("API: pratica #" + snap.ticket_id + (snap.routed_department ? " · " + snap.routed_department : "")))
+              ? ("Pratica registrata n. " + snap.ticket_id + (snap.routed_department ? " · reparto " + deptLabel(snap.routed_department) : ""))
+              : ("API: pratica #" + snap.ticket_id + (snap.routed_department ? " · " + deptLabel(snap.routed_department) : "")))
           : (H_CLEAN
               ? "Nessuna nuova pratica in questo messaggio (vedi riepilogo a destra)."
               : "API: nessuna nuova pratica in questo turno (vedi pannello «Esito API»)."),
@@ -572,7 +637,7 @@
     updateOpMailPanel();
   }
 
-  function renderGlobalPendingHint(globalPayload, deptLabel, localCount, fetchError, isUnified) {
+  function renderGlobalPendingHint(globalPayload, deptLabelText, localCount, fetchError, isUnified) {
     var el = document.getElementById("op-pending-global");
     if (!el) return;
     if (fetchError) {
@@ -590,7 +655,7 @@
       var d = t.department;
       if (d && Object.prototype.hasOwnProperty.call(counts, d)) counts[d]++;
     });
-    var summary = "vendita " + counts.vendita + ", acquisto " + counts.acquisto + ", manutenzione " + counts.manutenzione;
+    var summary = "vendita " + counts.vendita + ", acquisto " + counts.acquisto + ", officina " + counts.manutenzione;
     if (total === 0) {
       el.innerHTML = H_CLEAN
         ? "<strong>Richieste in attesa in officina:</strong> nessuna al momento. Se nel riepilogo «Richiesta» non compare un numero di pratica, la segnalazione non è stata ancora registrata dal sistema."
@@ -615,7 +680,7 @@
     if (H_CLEAN) {
       el.innerHTML =
         "<strong>In tutta l’officina</strong> ci sono <strong>" + total + "</strong> richieste ancora da prendere in carico (" + summary + "). " +
-        "Nel reparto <strong>" + esc(deptLabel) + "</strong> quelle ancora «In coda» sono <strong>" + localCount + "</strong>. " +
+          "Nel reparto <strong>" + esc(deptLabelText) + "</strong> quelle ancora «In coda» sono <strong>" + localCount + "</strong>. " +
         "L’elenco sotto riporta tutte le pratiche di questo reparto.";
       if (localCount === 0 && total > 0) {
         el.innerHTML += " <span style='color:var(--err)'>Qui non ce ne sono: prova «Tutti i reparti» o un altro reparto.</span>";
@@ -624,7 +689,7 @@
     }
     el.innerHTML =
       "<strong>Registry centrale:</strong> " + total + " in coda (" + summary + "). " +
-      "Reparto «<strong>" + esc(deptLabel) + "</strong>»: pratiche ancora <em>In coda</em>: <strong>" + localCount + "</strong>. " +
+      "Reparto «<strong>" + esc(deptLabelText) + "</strong>»: pratiche ancora <em>In coda</em>: <strong>" + localCount + "</strong>. " +
       "L’elenco sotto mostra <strong>tutte</strong> le pratiche del reparto (ogni stato).";
     if (localCount === 0 && total > 0) {
       el.innerHTML += " <span style='color:var(--err)'>Nessuna in coda qui: il totale è in altri reparti — prova vista unificata o altro reparto.</span>";
@@ -694,6 +759,15 @@
       btn.disabled = true;
       updateOpResolveButton();
       return;
+    }
+    var subjectEl = document.getElementById("op-mail-subject");
+    if (subjectEl) {
+      var suggested = contextMailSubject(meta);
+      var isAuto = subjectEl.getAttribute("data-auto-subject") === "1";
+      if (!subjectEl.value.trim() || isAuto) {
+        subjectEl.value = suggested;
+        subjectEl.setAttribute("data-auto-subject", "1");
+      }
     }
     if (meta.status === "pending_acceptance") {
       hint.textContent = "Pratica «In coda»: usa «Prendi in carico» (con te come operatore) prima di scrivere al richiedente.";
@@ -771,7 +845,7 @@
       var pendingHere = list.filter(function (p) {
         return p.status === "pending_acceptance";
       }).length;
-      var hintLabel = isUnified ? "tutti i reparti" : dept;
+      var hintLabel = isUnified ? "tutti i reparti" : deptLabel(dept);
       renderGlobalPendingHint(globalPayload, hintLabel, pendingHere, globalFetchError, isUnified);
       if (!list.length) {
         elenco.innerHTML =
@@ -798,7 +872,7 @@
               : "—";
           var tit = esc((p.title || "").slice(0, 72));
           var rq = esc((p.customer_name || "").slice(0, 40) || "—");
-          var dep = esc((p.department || "—").slice(0, 14));
+          var dep = esc((deptLabel(p.department) || "—").slice(0, 14));
           return (
             "<div class='op-pr-row' role='button' tabindex='0' data-id='" +
             esc(p.id) +
@@ -882,7 +956,7 @@
         var dFail = document.getElementById("op-dept").value;
         renderGlobalPendingHint(
           globalPayload,
-          _validDept(dFail) ? dFail : "tutti i reparti",
+          _validDept(dFail) ? deptLabel(dFail) : "tutti i reparti",
           0,
           globalFetchError,
           !_validDept(dFail)
@@ -936,6 +1010,9 @@
     updateOpMailPanel();
     opLoadThread();
   });
+  document.getElementById("op-mail-subject").addEventListener("input", function () {
+    this.setAttribute("data-auto-subject", "0");
+  });
 
   document.getElementById("op-accept").addEventListener("click", async function () {
     var eff = operatorEffectiveDept();
@@ -961,8 +1038,19 @@
     setSt("st-op", "Accettazione…", "load");
     try {
       await apiFetch("POST", "/departments/" + encodeURIComponent(eff) + "/tickets/" + encodeURIComponent(ticketId) + "/accept", { employee_id: empId });
+      try {
+        localStorage.setItem(LS_LAST_TICKET, ticketId);
+        localStorage.setItem(LS_LAST_DEPT, eff);
+      } catch (e0) {}
       setSt("st-op", "Presa in carico riuscita. Puoi scrivere al richiedente o usare la chat assistenza.", "ok");
       await loadPraticheElenco();
+      var selAfterAccept = document.getElementById("op-ticket");
+      if (selAfterAccept && Array.from(selAfterAccept.options).some(function (o) { return o.value === ticketId; })) {
+        selAfterAccept.value = ticketId;
+        opHighlightRow(ticketId);
+      }
+      syncOperatorToAssignee();
+      updateOpMailPanel();
       opLoadThread();
     } catch (err) {
       setSt("st-op", err.message, "err");
@@ -991,9 +1079,15 @@
         subject: subject,
         body: bodyM
       });
+      try {
+        localStorage.setItem(LS_LAST_TICKET, praticaId);
+        localStorage.setItem(LS_LAST_DEPT, eff);
+      } catch (e1) {}
       document.getElementById("op-mail-subject").value = "";
+      document.getElementById("op-mail-subject").setAttribute("data-auto-subject", "0");
       document.getElementById("op-mail-body").value = "";
       setSt("st-op", "Messaggio registrato: il richiedente lo vede nel tab Richiesta (posta simulata).", "ok");
+      await refreshInbox();
     } catch (err) {
       setSt("st-op", err.message, "err");
     } finally {
@@ -1140,6 +1234,13 @@
 
   /** Ricarica UI da server e storage: usato all’avvio e dopo reload (anche bfcache). */
   async function bootstrapUi() {
+    normalizeDeptSelectLabels();
+    try {
+      var health = await apiFetch("GET", "/health");
+      wireLlmProviderSwitch(health);
+    } catch (e) {
+      wireLlmProviderSwitch(null);
+    }
     loadContact();
     restoreHandoffSnapshotIfNeeded();
     try {

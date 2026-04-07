@@ -11,7 +11,7 @@ Prototipo (**POC**) che simula l’arrivo di una **richiesta unificata** (mail/c
 
 ## Obiettivo e flusso funzionale
 
-1. **Intake** — `POST /intake/chat`: messaggio del “cliente”. L’agente (LangGraph + LLM locale Ollama o Groq cloud) usa tool per **anagrafica** (`lookup_company_by_email`), **elenco reparti** (`list_helpdesks`) e, raccolti **contatti** e **dati operativi minimi** (es. anno + km per veicolo, quantità per ricambi), **apre il ticket** nel DB del settore con `route_and_open_ticket` — **senza** obbligo di una generica conferma di “autorizzazione”. Stato iniziale del ticket: **`pending_acceptance`** (e riga nel registry **pratiche**).
+1. **Intake** — `POST /intake/chat`: messaggio del “cliente”. L’agente (LangGraph + LLM locale Ollama o Groq cloud) usa tool per **anagrafica** (`lookup_company_by_email`), **elenco reparti** (`list_helpdesks`) e, raccolti **contatti** e **dati operativi minimi** (es. anno + km per veicolo, quantità per ricambi), prova ad aprire il ticket con `route_and_open_ticket`. È presente una **guardia server-side**: se i dati operativi non sono completi il ticket **non viene aperto** anche se il modello chiama il tool. Per le targhe veicolo è richiesto formato italiano **AA123BB** (due lettere, tre cifre, due lettere). Stato iniziale del ticket: **`pending_acceptance`** (e riga nel registry **pratiche**).
 2. **Coda / elenco** — `GET /departments/{reparto}/tickets/pending`: solo pratiche **in attesa di accettazione** per quel reparto. **`GET /departments/{reparto}/pratiche`**: **tutte** le pratiche del reparto (ogni stato) con **nome operatore assegnato** (per UI operatore). **`GET /pratiche`**: stesso formato su **tutti** i reparti (vista unificata). `GET /pratiche/pending`: coda globale su tutti i reparti.
 3. **Presa in carico** — `POST /departments/{reparto}/tickets/{id}/accept` con `employee_id`: ticket in **`in_progress`** e assegnato al dipendente (allineato su DB reparto e registry pratiche).
 4. **Messaggio al richiedente** — `POST /departments/{reparto}/pratiche/{pratica_id}/mail-richiedente` (body: `employee_id`, `subject`, `body`): registra email simulata verso il richiedente (**solo** se pratica `in_progress` e assegnata a quell’`employee_id`). Alternativa: tool in **`POST /assist/chat`**.
@@ -25,7 +25,12 @@ Prototipo (**POC**) che simula l’arrivo di una **richiesta unificata** (mail/c
 | **http://127.0.0.1:8000/ui/** | Vista **tecnica** (traccia, pannello esito API, suggerimenti con riferimenti agli endpoint). |
 | **http://127.0.0.1:8000/ui/clean.html** o **http://127.0.0.1:8000/ui/index.html?clean=1** | Vista **pulita** (testi per l’utente finale, senza dettagli API nella UI). |
 
-Tab *Richiesta* (intake) e *Dipendente* (elenco pratiche per reparto o unificato, presa in carico, chiusura pratica, messaggio al richiedente, chat assistente).
+Tab *Richiesta* (intake) e *Dipendente* (elenco pratiche per reparto o unificato, presa in carico, chiusura pratica, messaggio al richiedente, chat assistente). In UI il reparto `manutenzione` è mostrato come **officina**.
+
+Selettore modello in header UI:
+- **Locale (Ollama)** / **Remoto (Groq)**, persistito nel browser.
+- Ogni chiamata API invia `X-LLM-Provider`.
+- Se un provider non è disponibile, viene disabilitato in UI.
 
 ### Diagramma logico (alto livello)
 
@@ -174,6 +179,8 @@ python -m pytest tests/test_intake_golden_routing.py -v
 
 **Fallback intake lato server** (`INTAKE_FALLBACK_OPEN`): se il modello non invoca il tool ma il gate euristica è soddisfatto, l’API può aprire comunque la pratica. In quel caso nei log compare una riga **`WARNING`** `intake_fallback_open_applied` (con dominio email e anteprima titolo); i motivi per cui il fallback *non* scatta sono tracciati a livello **`DEBUG`** (`intake_fallback_open skipped: …`).
 
+**Guardia apertura tool** (`route_and_open_ticket`): anche con tool-call esplicita, il backend valida i requisiti operativi minimi (veicolo/ricambi) prima dell’inserimento DB. Se il gate non è soddisfatto, risponde con `opened=false` e messaggio cliente-ready; non viene creata alcuna pratica.
+
 ```powershell
 pip install -r requirements-dev.txt
 python -m pytest
@@ -248,6 +255,10 @@ curl.exe -X POST http://127.0.0.1:8000/assist/chat -H "Content-Type: application
 ## Workflow agente (5 fasi)
 
 Intake e assist condividono lo stesso schema a fasi: **missione** → **ricognizione (tool)** → **ragionamento** → **azione (tool)** → **sintesi**. I tool differiscono (intake: anagrafica + apertura ticket smistato; assist: CRUD ticket sul reparto nel contesto).
+
+Dettagli recenti intake:
+- Titolo pratica normalizzato in formato coerente: **`[Reparto] Riassunto breve`** (es. `[Officina] ...`).
+- Il riassunto titolo viene derivato dal **contesto completo** (`full_summary`), non solo dal primo messaggio.
 
 ---
 

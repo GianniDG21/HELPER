@@ -59,23 +59,52 @@ async def lifespan(app: FastAPI):
         app.state.db_available = True
 
     app.state.checkpointer = MemorySaver()
-    app.state.intake_graph = build_intake_graph(
-        settings, checkpointer=app.state.checkpointer
-    )
-    app.state.assist_graph = build_assist_graph(
-        settings, checkpointer=app.state.checkpointer
-    )
-    if settings.llm_provider == "ollama":
-        log.info(
-            "Grafi pronti (Ollama %s @ %s, checkpointer in-memory)",
-            settings.ollama_model,
-            settings.ollama_base_url,
+    app.state.llm_default_provider = settings.llm_provider
+    app.state.intake_graphs = {}
+    app.state.assist_graphs = {}
+    app.state.available_llm_providers = []
+
+    # Prova sempre il provider locale.
+    settings_ollama = settings.model_copy(update={"llm_provider": "ollama"})
+    try:
+        app.state.intake_graphs["ollama"] = build_intake_graph(
+            settings_ollama, checkpointer=app.state.checkpointer
         )
-    else:
-        log.info(
-            "Grafi pronti (Groq %s, checkpointer in-memory)",
-            settings.groq_model,
+        app.state.assist_graphs["ollama"] = build_assist_graph(
+            settings_ollama, checkpointer=app.state.checkpointer
         )
+        app.state.available_llm_providers.append("ollama")
+    except Exception as e:
+        log.warning("Provider Ollama non disponibile all'avvio: %s", e)
+
+    # Abilita il provider remoto solo se configurato (es. GROQ_API_KEY).
+    try:
+        settings_groq = settings.model_copy(update={"llm_provider": "groq"})
+        app.state.intake_graphs["groq"] = build_intake_graph(
+            settings_groq, checkpointer=app.state.checkpointer
+        )
+        app.state.assist_graphs["groq"] = build_assist_graph(
+            settings_groq, checkpointer=app.state.checkpointer
+        )
+        app.state.available_llm_providers.append("groq")
+    except Exception as e:
+        log.warning("Provider Groq non disponibile all'avvio: %s", e)
+
+    if not app.state.available_llm_providers:
+        raise RuntimeError(
+            "Nessun provider LLM disponibile: configura Ollama o GROQ_API_KEY."
+        )
+
+    # Fallback sicuro: se il default non e disponibile usa il primo disponibile.
+    if app.state.llm_default_provider not in app.state.available_llm_providers:
+        app.state.llm_default_provider = app.state.available_llm_providers[0]
+    app.state.intake_graph = app.state.intake_graphs[app.state.llm_default_provider]
+    app.state.assist_graph = app.state.assist_graphs[app.state.llm_default_provider]
+    log.info(
+        "Grafi pronti provider=%s disponibili=%s (checkpointer in-memory)",
+        app.state.llm_default_provider,
+        ",".join(app.state.available_llm_providers),
+    )
     yield
     if getattr(app.state, "db_available", False):
         await close_pools()
